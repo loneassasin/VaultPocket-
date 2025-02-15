@@ -2,7 +2,10 @@ import { useIsFocused, useNavigation, useRoute } from "@react-navigation/native"
 import { StatusBar } from "expo-status-bar";
 import { doc, collection, addDoc, updateDoc } from "firebase/firestore";
 import { getFirestore } from "firebase/firestore";
-import { Base64 } from "js-base64";
+import { KeyboardAvoidingView, Platform, ScrollView } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { AppLoader } from "./../components";
+import { auth, db } from "./../services/firebase";
 import {
   Actionsheet,
   Box,
@@ -16,17 +19,7 @@ import {
   useToast,
 } from "native-base";
 import { useCallback, useContext, useEffect, useState, useMemo } from "react";
-import { KeyboardAvoidingView, Platform, ScrollView } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { AppLoader } from "./../components";
-import { auth, db } from "./../services/firebase";
-import {
-  ThemeContext,
-  darkTheme,
-  encryptedPassword,
-  generatePassword,
-  lightTheme,
-} from "./../utils";
+import { ThemeContext, darkTheme, encryptData, decryptData, generatePassword, generateEncryptionKey, lightTheme } from "./../utils";
 
 //const db = getFirestore(app);
 
@@ -37,6 +30,10 @@ export const AddPasswordScreen = () => {
   const route = useRoute();
   const isFocused = useIsFocused();
   const toast = useToast();
+
+  // Get the current user's UID for encryption
+  const currentUser = auth.currentUser;
+  const encryptionKey = useMemo(() => generateEncryptionKey(currentUser?.uid), [currentUser?.uid]);
 
   const [isLoading, setIsLoading] = useState(false);
   const [siteName, setSiteName] = useState("");
@@ -76,16 +73,24 @@ export const AddPasswordScreen = () => {
 
   // Load existing password data
   useEffect(() => {
-    if (!isFocused) return;
-
-    const item = route?.params?.item;
-    if (item) {
+    const item = route.params?.item;
+    if (item && isFocused) {
       setSiteName(item.siteName || "");
       setURL(item.url || "");
       setUsername(item.username || "");
-      setPassword(item.password ? Base64.decode(item.password) : "");
+      try {
+        // Safely decrypt the password with error handling
+        const decryptedPassword = item.password ? decryptData(item.password, encryptionKey) : "";
+        if (!decryptedPassword && item.password) {
+          console.warn("Failed to decrypt password");
+        }
+        setPassword(decryptedPassword);
+      } catch (error) {
+        console.error("Error decrypting password:", error);
+        setPassword("");
+      }
     }
-  }, [isFocused]);
+  }, [isFocused, encryptionKey]);
 
   // Generate password when options change
   useEffect(() => {
@@ -94,46 +99,51 @@ export const AddPasswordScreen = () => {
   }, [handleGeneratePassword]);
 
   const handleSavePassword = async () => {
-    if (!siteName || !username || !password) {
-      toast.show({
-        render: () => (
-          <Box bg="#730000" px={4} py={2} rounded="md" mb={5}>
-            <Text color="#ffffff">All Fields Must be Filled!</Text>
-          </Box>
-        ),
-      });
-      return;
-    }
-
-    setIsLoading(true);
     try {
-      const user = auth.currentUser;
-      if (!user) {
-        navigation.replace('Login');
+      if (!currentUser) {
+        toast.show({
+          title: "Error",
+          description: "You must be logged in to save passwords",
+          status: "error",
+        });
         return;
       }
 
+      if (!siteName || !username || !password) {
+        toast.show({
+          render: () => (
+            <Box bg="#730000" px={4} py={2} rounded="md" mb={5}>
+              <Text color="#ffffff">All Fields Must be Filled!</Text>
+            </Box>
+          ),
+        });
+        return;
+      }
+
+      setIsLoading(true);
       const passwordData = {
         siteName,
         username,
-        password: Base64.encode(password),
+        password: encryptData(password, encryptionKey),
         url: url || '',
         updatedAt: new Date(),
+        userId: currentUser.uid, // Add userId for security
       };
 
       if (route.params?.item) {
         // Update existing password
-        const passwordRef = doc(db, 'users', user.uid, 'passwords', route.params.item.id);
+        const passwordRef = doc(db, 'users', currentUser.uid, 'passwords', route.params.item.id);
         await updateDoc(passwordRef, passwordData);
       } else {
         // Add new password
-        const passwordsRef = collection(db, 'users', user.uid, 'passwords');
+        const passwordsRef = collection(db, 'users', currentUser.uid, 'passwords');
         await addDoc(passwordsRef, {
           ...passwordData,
           createdAt: new Date(),
         });
       }
 
+      // Clear form after successful save
       setSiteName("");
       setURL("");
       setUsername("");
@@ -141,15 +151,16 @@ export const AddPasswordScreen = () => {
       
       toast.show({
         render: () => (
-          <Box bg="#0E660C" px={4} py={2} rounded="md" mb={5}>
-            <Text color="#ffffff">
-              {route.params?.item ? "Password Updated Successfully" : "Password Added Successfully"}
-            </Text>
+          <Box bg="emerald.500" px={4} py={2} rounded="md" mb={5}>
+            <Text color="#ffffff">Password Saved Successfully!</Text>
           </Box>
         ),
       });
-      
-      navigation.goBack();
+
+      // Navigate back if editing
+      if (route.params?.item) {
+        navigation.goBack();
+      }
     } catch (error) {
       console.error("Error saving password:", error);
       toast.show({

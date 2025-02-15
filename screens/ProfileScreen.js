@@ -1,11 +1,11 @@
 import { useNavigation } from "@react-navigation/native";
 import { StatusBar } from "expo-status-bar";
 import { signOut } from "firebase/auth";
-import { onValue, ref } from "firebase/database";
+import { doc, onSnapshot } from "firebase/firestore";
 import { Box, Button, Image, Switch, Text } from "native-base";
 import { useContext, useEffect, useState } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { app, auth, database } from "./../services/firebase";
+import { app, auth, db } from "./../services/firebase";
 import { ThemeContext, darkTheme, lightTheme } from "./../utils";
 import { ActivityIndicator } from "react-native";
 
@@ -28,10 +28,10 @@ export const ProfileScreen = () => {
 
     try {
       setIsLoading(true);
-      const userRef = ref(database, `users/${currentUser.uid}`);
+      const userRef = doc(db, 'users', currentUser.uid);
 
-      onValue(userRef, (snapshot) => {
-        const data = snapshot.val();
+      const unsubscribe = onSnapshot(userRef, (doc) => {
+        const data = doc.data();
         setUserData(data || {
           name: currentUser.displayName,
           email: currentUser.email
@@ -41,6 +41,8 @@ export const ProfileScreen = () => {
         console.error("Profile Screen error:", error);
         setIsLoading(false);
       });
+
+      return unsubscribe;
     } catch (error) {
       console.error("Profile Screen error:", error);
       setIsLoading(false);
@@ -59,91 +61,62 @@ export const ProfileScreen = () => {
     return () => unsubscribe();
   }, []);
 
-  const handleLogout = async () => {
+  const handleSignOut = async () => {
     try {
       await signOut(auth);
       navigation.replace('Login');
     } catch (error) {
-      console.error("Logout error:", error);
+      console.error("Sign out error:", error);
     }
   };
 
+  if (isLoading) {
+    return (
+      <Box flex={1} justifyContent="center" alignItems="center" bg={theme.background}>
+        <ActivityIndicator size="large" color={theme.primary} />
+      </Box>
+    );
+  }
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }}>
-      <StatusBar style="auto" />
-      <Box mx={5} h="full" position="relative">
-        <Box mt={12} justifyContent="center" alignItems="center">
+      <StatusBar style={currentTheme === "light" ? "dark" : "light"} />
+      <Box flex={1} p={4}>
+        <Box alignItems="center" mb={6}>
           <Image
             source={require("./../assets/images/avatar.png")}
-            alt="Avatar"
-            size={20}
-            borderRadius="full"
+            alt="Profile"
+            size="xl"
+            borderRadius={100}
+            mb={4}
           />
-        </Box>
-        {isLoading ? (
-          <ActivityIndicator size={24} color={theme.text} />
-        ) : (
-          <Text
-            textAlign="center"
-            fontSize={"3xl"}
-            fontWeight="bold"
-            color={theme.text}
-          >
-            {userData?.name || auth.currentUser?.displayName || 'User'}
+          <Text fontSize="xl" color={theme.text} bold>
+            {userData?.name || "User"}
           </Text>
-        )}
+          <Text fontSize="md" color={theme.textSecondary}>
+            {userData?.email || ""}
+          </Text>
+        </Box>
 
-        <Box
-          justifyContent="space-between"
-          alignItems="center"
-          px={4}
-          py={1}
-          bgColor="#D9D9D9"
-          borderRadius={12}
+        <Box mb={6}>
+          <Box flexDirection="row" justifyContent="space-between" alignItems="center" mb={4}>
+            <Text fontSize="md" color={theme.text}>Dark Mode</Text>
+            <Switch
+              isChecked={currentTheme === "dark"}
+              onToggle={toggleTheme}
+              colorScheme="emerald"
+            />
+          </Box>
+        </Box>
+
+        <Button
+          onPress={handleSignOut}
+          bg="red.600"
+          _pressed={{ bg: "red.700" }}
+          mb={4}
         >
-          <Text fontSize={24} fontWeight="bold">
-            66%
-          </Text>
-          <Text fontSize={14}>Password Safety Score</Text>
-        </Box>
-        <Box my={2.5} px={4} py={2} bgColor="#D9D9D9" borderRadius={12}>
-          <Text fontSize={14}>Username</Text>
-          <Text fontSize={14} opacity={0.5}>
-            {userData?.email || auth.currentUser?.email || ''}
-          </Text>
-        </Box>
-
-        <Box
-          flexDirection="row"
-          justifyContent="space-between"
-          alignItems="center"
-          my={2.5}
-          px={4}
-          py={2}
-          bgColor="#D9D9D9"
-          borderRadius={12}
-        >
-          <Text fontSize={14}>Dark Mode</Text>
-          <Switch
-            size="lg"
-            onToggle={toggleTheme}
-            isChecked={currentTheme === "dark"}
-          />
-        </Box>
-
-        <Box position="absolute" bottom={10} w="full">
-          <Button
-            w="full"
-            py={4}
-            bgColor="#166079"
-            _pressed={{ bgColor: "#166079" }}
-            onPress={handleLogout}
-          >
-            <Text color="#ffffff" fontSize={16} fontWeight="bold">
-              Logout
-            </Text>
-          </Button>
-        </Box>
+          Sign Out
+        </Button>
       </Box>
     </SafeAreaView>
   );

@@ -1,68 +1,68 @@
-// Simple encryption/decryption functions that work in React Native
-const generateKey = (text) => {
-  let key = 0;
-  for (let i = 0; i < text.length; i++) {
-    key += text.charCodeAt(i);
-  }
-  return key.toString(16);
-};
+// Secure encryption/decryption functions using AES for React Native
+import CryptoJS from 'crypto-js';
 
-// Generate a deterministic key from the user's UID
-export const generateEncryptionKey = (uid) => {
+/**
+ * Generate a secure key from the user's UID
+ * @param {string} uid - The user's UID
+ * @returns {string} The generated encryption key
+ */
+export function generateEncryptionKey(uid) {
   if (!uid) return '';
-  return generateKey(uid + 'VaultPocket_Salt_2025');
-};
+  // Use a simpler key derivation for React Native
+  const salt = 'VaultPocket_Salt_2025';
+  return CryptoJS.SHA256(uid + salt).toString();
+}
 
-// Simple XOR encryption
-const xorEncrypt = (text, key) => {
-  let result = '';
-  for (let i = 0; i < text.length; i++) {
-    const charCode = text.charCodeAt(i) ^ key.charCodeAt(i % key.length);
-    result += String.fromCharCode(charCode);
-  }
-  return result;
-};
-
-// Convert text to base64
-const toBase64 = (text) => {
-  try {
-    return btoa(text);
-  } catch (e) {
-    // For React Native
-    return Buffer.from(text, 'binary').toString('base64');
-  }
-};
-
-// Convert base64 to text
-const fromBase64 = (text) => {
-  try {
-    return atob(text);
-  } catch (e) {
-    // For React Native
-    return Buffer.from(text, 'base64').toString('binary');
-  }
-};
-
-// Encrypt data
-export const encryptData = (data, key) => {
+/**
+ * Encrypt data using AES
+ * @param {string} data - The data to encrypt
+ * @param {string} key - The encryption key
+ * @returns {string} The encrypted data
+ */
+export function encryptData(data, key) {
   try {
     if (!data || !key) return '';
-    const encrypted = xorEncrypt(data, key);
-    return toBase64(encrypted);
+    
+    // Generate a static IV based on the key
+    const iv = CryptoJS.SHA256(key).toString().substr(0, 16);
+    
+    // Create encryption parameters
+    const encrypted = CryptoJS.AES.encrypt(data, CryptoJS.enc.Utf8.parse(key), {
+      iv: CryptoJS.enc.Utf8.parse(iv),
+      mode: CryptoJS.mode.CBC,
+      padding: CryptoJS.pad.Pkcs7
+    });
+    
+    return encrypted.toString();
   } catch (error) {
     console.error('Encryption error:', error);
     return '';
   }
-};
+}
 
-// Decrypt data
-export const decryptData = (encryptedData, key) => {
+/**
+ * Decrypt data using AES
+ * @param {string} encryptedData - The encrypted data to decrypt
+ * @param {string} key - The decryption key
+ * @returns {string} The decrypted data
+ */
+export function decryptData(encryptedData, key) {
   try {
     if (!encryptedData || !key) return '';
-    const decrypted = fromBase64(encryptedData);
-    return xorEncrypt(decrypted, key); // XOR is its own inverse
+    
+    // Generate the same IV based on the key
+    const iv = CryptoJS.SHA256(key).toString().substr(0, 16);
+    
+    // Decrypt the data
+    const decrypted = CryptoJS.AES.decrypt(encryptedData, CryptoJS.enc.Utf8.parse(key), {
+      iv: CryptoJS.enc.Utf8.parse(iv),
+      mode: CryptoJS.mode.CBC,
+      padding: CryptoJS.pad.Pkcs7
+    });
+    
+    return decrypted.toString(CryptoJS.enc.Utf8);
   } catch (error) {
     console.error('Decryption error:', error);
     return '';
   }
-};
+}

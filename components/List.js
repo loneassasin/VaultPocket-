@@ -1,216 +1,119 @@
-import { useRoute } from "@react-navigation/native";
-import * as Clipboard from "expo-clipboard";
-import { Base64 } from "js-base64";
-import {
-  Box,
-  Button,
-  Divider,
-  Flex,
-  Image,
-  Menu,
-  Pressable,
-  Text,
-  View,
-  useToast,
-} from "native-base";
+import { Box, Button, Flex, Icon, Text, useToast } from "native-base";
 import { useContext, useState } from "react";
-import { ThemeContext, darkTheme, lightTheme } from "./../utils";
+import * as Clipboard from "expo-clipboard";
+import { ThemeContext, darkTheme, lightTheme } from "../utils";
 
 export const List = ({ item, setIsCopy, editPassword, deletePassword }) => {
-  const route = useRoute();
-
-  const toast = useToast();
-
   const { currentTheme } = useContext(ThemeContext);
-
+  const toast = useToast();
+  const theme = currentTheme === "light" ? lightTheme : darkTheme;
   const [showPassword, setShowPassword] = useState(false);
 
-  const theme = currentTheme === "light" ? lightTheme : darkTheme;
-
   const copyToClipboard = async (text) => {
-    await Clipboard.setString(text);
-    // Optionally, you can show a toast or perform any other action after copying
-    console.log("Text copied to clipboard:", text);
+    try {
+      await Clipboard.setStringAsync(text);
+      setIsCopy(true);
+      toast.show({
+        render: () => (
+          <Box bg="#0E660C" px={4} py={2} rounded="md" mb={5}>
+            <Text color="#ffffff">Copied to clipboard!</Text>
+          </Box>
+        ),
+      });
+    } catch (error) {
+      console.error("Error copying to clipboard:", error);
+      toast.show({
+        render: () => (
+          <Box bg="#730000" px={4} py={2} rounded="md" mb={5}>
+            <Text color="#ffffff">Failed to copy to clipboard</Text>
+          </Box>
+        ),
+      });
+    }
   };
 
   return (
-    <Flex
-      flexDirection="row"
-      justifyContent="center"
-      alignItems="center"
-      h={16}
-      mt={1.5}
-      mb={2.5}
-      px={1}
-      bgColor="#D9D9D9"
-      borderRadius={12}
+    <Box
+      bg={theme.cardBg || '#ffffff'}
+      rounded="lg"
+      shadow={2}
+      mb={4}
+      p={4}
     >
-      <Box
-        h={12}
-        justifyContent="center"
-        paddingX={1.5}
-        paddingY={1.5}
-        bgColor="white"
-        borderRadius="full"
-      >
-        <Image
-          source={require("./../assets/images/user.png")}
-          alt="User"
-          w={8}
-          h={8}
-        />
-      </Box>
-      <Box
-        w={route.name === "Keys" ? "3/5" : "4/6"}
-        h="full"
-        m={2}
-        justifyContent="center"
-      >
-        <Text fontSize="sm" fontWeight="bold" textTransform="capitalize">
-          {item.siteName}
-        </Text>
-        <Text fontSize="xs">{item.username}</Text>
-        <Flex flexDirection="row" alignItems="center">
-          <Text fontSize="xs">
-            {showPassword ? Base64.decode(item.password) : "*********"}
+      <Flex direction="row" justify="space-between" align="center">
+        <Box flex={1}>
+          <Text color={theme.text} fontSize="lg" fontWeight="bold" mb={1}>
+            {item.siteName || 'Untitled'}
           </Text>
+          {item.url && (
+            <Text color={theme.textSecondary || theme.text} fontSize="sm" mb={1}>
+              {item.url}
+            </Text>
+          )}
+          <Text color={theme.textSecondary || theme.text} fontSize="sm" mb={1}>
+            {item.username}
+          </Text>
+          <Flex direction="row" align="center">
+            <Text color={theme.textSecondary || theme.text} fontSize="sm">
+              Password: {showPassword ? item.password : '••••••••'}
+            </Text>
+            <Button
+              variant="ghost"
+              onPress={() => setShowPassword(!showPassword)}
+              _pressed={{ bg: 'transparent' }}
+              p={1}
+            >
+              <Icon
+                size="sm"
+                color={theme.text}
+                as={<Text>{showPassword ? '👁️' : '👁'}</Text>}
+              />
+            </Button>
+          </Flex>
+        </Box>
+        <Flex direction="row" align="center">
           <Button
-            variant="unstyled"
-            p={0}
-            onPress={() => setShowPassword(!showPassword)}
+            variant="ghost"
+            onPress={() => copyToClipboard(item.password)}
+            _pressed={{ bg: 'transparent' }}
+            p={2}
           >
-            {showPassword && (
-              <Image
-                source={require("./../assets/images/hidden.png")}
-                alt="Hidden"
-                w={3}
-                h={3}
-                mx={1}
-              />
-            )}
-            {!showPassword && (
-              <Image
-                source={require("./../assets/images/eye.png")}
-                alt="Eye"
-                w={3}
-                h={3}
-                mx={1}
-              />
-            )}
-          </Button>
-        </Flex>
-      </Box>
-      <Flex
-        h="full"
-        flexDirection="row"
-        alignItems="center"
-        justifyContent="center"
-      >
-        <Button
-          variant="unstyled"
-          p={0}
-          onPress={() => {
-            setIsCopy(true);
-            copyToClipboard(Base64.decode(item.password));
-
-            toast.show({
-              render: () => {
-                return (
-                  <Box
-                    bg={currentTheme === "light" ? "#000000" : "#ffffff"}
-                    px={12}
-                    py={0.5}
-                    rounded="md"
-                    mb={5}
-                    borderWidth={1}
-                  >
-                    <Text
-                      color={currentTheme === "light" ? "#ffffff" : "#000000"}
-                    >
-                      Copied to clipboard
-                    </Text>
-                  </Box>
-                );
-              },
-            });
-          }}
-        >
-          <Image
-            source={require("./../assets/images/copy.png")}
-            alt="Copy"
-            w={6}
-            h={6}
-          />
-        </Button>
-        {route.name === "Keys" && (
-          <Menu
-            placement="left top"
-            w="190"
-            borderRadius={16}
-            bgColor={currentTheme === "light" ? "#000000" : "#ffffff"}
-            trigger={(triggerProps) => {
-              return (
-                <Pressable
-                  accessibilityLabel="More options menu"
-                  {...triggerProps}
-                >
-                  <Image
-                    source={require("./../assets/images/dots.png")}
-                    alt="Dots"
-                    size={5}
-                  />
-                </Pressable>
-              );
-            }}
-          >
-            <Menu.Item onPress={() => editPassword(item)}>
-              <View
-                w={"100%"}
-                alignItems={"center"}
-                justifyContent={"space-between"}
-                flexDir={"row"}
-              >
-                <Text
-                  fontWeight={"bold"}
-                  color={currentTheme === "light" ? "#ffffff" : "#000000"}
-                >
-                  Edit{" "}
-                </Text>
-                <Image
-                  source={require("./../assets/images/edit.png")}
-                  alt="Edit"
-                  size={4}
-                />
-              </View>
-            </Menu.Item>
-            <Divider
-              w="100%"
-              color={currentTheme === "light" ? "#ffffff" : "#000000"}
+            <Icon
+              size="sm"
+              color={theme.text}
+              as={<Text>📋</Text>}
             />
-            <Menu.Item onPress={() => deletePassword(item.id)}>
-              <View
-                w={"100%"}
-                alignItems={"center"}
-                justifyContent={"space-between"}
-                flexDir={"row"}
-              >
-                <Text
-                  fontWeight={"bold"}
-                  // w="50%"
-                  color={currentTheme === "light" ? "#ffffff" : "#000000"}
-                >
-                  Delete{" "}
-                </Text>
-                <Image
-                  source={require("./../assets/images/trash-can.png")}
-                  alt="Trash Can"
-                  size={4}
-                />
-              </View>
-            </Menu.Item>
-          </Menu>
-        )}
+          </Button>
+          {editPassword && (
+            <Button
+              variant="ghost"
+              onPress={() => editPassword(item)}
+              _pressed={{ bg: 'transparent' }}
+              p={2}
+            >
+              <Icon
+                size="sm"
+                color={theme.text}
+                as={<Text>✏️</Text>}
+              />
+            </Button>
+          )}
+          {deletePassword && (
+            <Button
+              variant="ghost"
+              onPress={() => deletePassword(item.id)}
+              _pressed={{ bg: 'transparent' }}
+              p={2}
+            >
+              <Icon
+                size="sm"
+                color={theme.text}
+                as={<Text>🗑️</Text>}
+              />
+            </Button>
+          )}
+        </Flex>
       </Flex>
-    </Flex>
+    </Box>
   );
 };

@@ -1,211 +1,145 @@
 import { useNavigation } from "@react-navigation/native";
 import { StatusBar } from "expo-status-bar";
-import { getDatabase, onValue, ref } from "firebase/database";
-import { Box, Button, Flex, Image, Text, View } from "native-base";
-import { useContext, useEffect, useState } from "react";
-import { ScrollView } from "react-native";
+import { collection, query, onSnapshot, orderBy } from "firebase/firestore";
+import { Box, Fab, Flex, Icon, Text } from "native-base";
+import { useCallback, useContext, useEffect, useState } from "react";
+import { ActivityIndicator, FlatList } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { AppLoader, List } from "./../components";
-import { app, auth } from "./../services/firebase";
+import { List } from "./../components";
+import { auth, db } from "./../services/firebase";
 import { ThemeContext, darkTheme, lightTheme } from "./../utils";
-
-const DATA = [
-  {
-    id: 1,
-    icon: require("./../assets/images/netflix.png"),
-    siteName: "netflix",
-    username: "admin@netflix.com",
-    password: "123456",
-  },
-  {
-    id: 2,
-    icon: require("./../assets/images/amazon.png"),
-    siteName: "amazon",
-    username: "admin@amazon.com",
-    password: "123456",
-  },
-  {
-    id: 3,
-    icon: require("./../assets/images/gmail.png"),
-    siteName: "gmail",
-    username: "admin@gmail.com",
-    password: "123456",
-  },
-  {
-    id: 4,
-    icon: require("./../assets/images/vk.png"),
-    siteName: "vk",
-    username: "admin@vk.com",
-    password: "123456",
-  },
-  {
-    id: 5,
-    icon: require("./../assets/images/udemy.png"),
-    siteName: "udemy",
-    username: "admin@udemy.com",
-    password: "123456",
-  },
-  {
-    id: 6,
-    icon: require("./../assets/images/slack.png"),
-    siteName: "slack",
-    username: "admin@slack.com",
-    password: "123456",
-  },
-];
-
-const database = getDatabase(app);
+import { decryptData, generateEncryptionKey } from "./../utils/encryption";
 
 export const HomeScreen = () => {
-  const navigation = useNavigation();
-
-  const [isLoading, setIsLoading] = useState(false);
-  const [user, setUser] = useState("");
-  const [passwords, setPasswords] = useState({});
-  const [isCopy, setIsCopy] = useState(false);
-
   const { currentTheme } = useContext(ThemeContext);
-
+  const navigation = useNavigation();
+  const [isLoading, setIsLoading] = useState(false);
+  const [passwords, setPasswords] = useState([]);
+  const [isCopy, setIsCopy] = useState(false);
+  const [encryptionKey, setEncryptionKey] = useState("");
   const theme = currentTheme === "light" ? lightTheme : darkTheme;
 
-  const fetchPasswords = async () => {
+  useEffect(() => {
+    if (auth.currentUser) {
+      const key = generateEncryptionKey(auth.currentUser.uid);
+      setEncryptionKey(key);
+    }
+  }, []);
+
+  const fetchPasswords = useCallback(() => {
     const user = auth.currentUser;
+    if (!user || !encryptionKey) {
+      if (!user) navigation.replace('Login');
+      return;
+    }
 
     try {
       setIsLoading(true);
-      const userRef = ref(database, `users/${user.uid}`);
-
-      onValue(userRef, async (snapshot) => {
-        const data = snapshot.val();
-        console.log("dataa", data);
-        setUser(data?.name);
-        if (data?.passwords) {
-          const passwordData = Object.values(data?.passwords);
-          setPasswords(passwordData);
-          setIsLoading(false);
-        } else {
-          setIsLoading(false);
-        }
+      const passwordsRef = collection(db, 'users', user.uid, 'passwords');
+      const q = query(passwordsRef, orderBy('createdAt', 'desc'));
+      
+      return onSnapshot(q, (snapshot) => {
+        const passwordsList = [];
+        snapshot.forEach((doc) => {
+          const data = doc.data();
+          try {
+            // Decrypt the password
+            const decryptedPassword = decryptData(data.password, encryptionKey);
+            if (decryptedPassword) {
+              passwordsList.push({
+                id: doc.id,
+                siteName: data.siteName || '',
+                username: data.username || '',
+                password: decryptedPassword,
+                url: data.url || '',
+                createdAt: data.createdAt,
+                updatedAt: data.updatedAt,
+              });
+            }
+          } catch (error) {
+            console.error("Error decrypting password:", error);
+          }
+        });
+        setPasswords(passwordsList);
+        setIsLoading(false);
+      }, (error) => {
+        console.error("Error fetching passwords:", error);
+        setIsLoading(false);
       });
     } catch (error) {
-      console.error("Keys Screen error", error);
+      console.error("Error setting up password listener:", error);
       setIsLoading(false);
     }
-  };
+  }, [navigation, encryptionKey]);
 
   useEffect(() => {
-    fetchPasswords();
-  }, []);
+    const unsubscribe = fetchPasswords();
+    return () => {
+      if (typeof unsubscribe === 'function') {
+        unsubscribe();
+      }
+    };
+  }, [fetchPasswords]);
+
+  const editPassword = (item) => {
+    navigation.navigate("AddPassword", { item });
+  };
+
+  if (isLoading) {
+    return (
+      <Flex flex={1} justify="center" align="center">
+        <ActivityIndicator size="large" color={theme.text} />
+      </Flex>
+    );
+  }
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }}>
       <StatusBar style="auto" />
-      <ScrollView contentContainerStyle={{ paddingBottom: 50 }}>
-        {isLoading ? (
-          <AppLoader />
+      <Box flex={1} bg={theme.background} safeAreaTop>
+        <Flex
+          direction="row"
+          justify="space-between"
+          align="center"
+          px={4}
+          py={4}
+        >
+          <Text color={theme.text} fontSize="2xl" fontWeight="bold">
+            Passwords
+          </Text>
+        </Flex>
+
+        {passwords.length === 0 ? (
+          <Flex flex={1} justify="center" align="center">
+            <Text color={theme.text} fontSize="lg">
+              No passwords added yet
+            </Text>
+          </Flex>
         ) : (
-          <Box mx={5}>
-            <Flex
-              flexDirection="row"
-              justifyContent="space-between"
-              alignItems="center"
-              my={4}
-              h={16}
-            >
-              <View flexDir={"row"}>
-                <Box h="full" justifyContent="center">
-                  <Image
-                    source={require("./../assets/images/avatar.png")}
-                    alt="Avatar"
-                    w={10}
-                    h={10}
-                  />
-                </Box>
-                <Box h="full" justifyContent="center">
-                  <Text color={theme.text}>Welcome</Text>
-                  <Text color={theme.text} fontSize="lg" fontWeight="bold">
-                    {user}
-                  </Text>
-                </Box>
-              </View>
-              <Button
-                p={0}
-                variant="unstyled"
-                onPress={() => navigation.navigate("Keys")}
-                h="full"
-                justifyContent="center"
-              >
-                <Image
-                  source={require("./../assets/images/search.png")}
-                  alt="Search"
-                  w={4}
-                  h={4}
-                  tintColor={theme.text}
-                />
-              </Button>
-            </Flex>
-            {passwords.length ? (
-              <>
-                <Flex
-                  flexDirection="row"
-                  justifyContent="space-between"
-                  alignItems="center"
-                  mt={6}
-                >
-                  <Text fontWeight="extrabold" color={theme.text}>
-                    Recently Used
-                  </Text>
-                  <Button
-                    variant="unstyled"
-                    m={0}
-                    p={0}
-                    onPress={() => navigation.navigate("Keys")}
-                  >
-                    <Text color={theme.text}>See More</Text>
-                  </Button>
-                </Flex>
-                <Flex mt={3} h="75%">
-                  {passwords.map((item) => (
-                    <List
-                      key={item.id.toString()}
-                      item={item}
-                      setIsCopy={setIsCopy}
-                    />
-                  ))}
-                </Flex>
-              </>
-            ) : (
-              <Box my={"1/4"} justifyContent="center" alignItems="center">
-                <Text color={theme.text}>
-                  Add your first password to experience the magic
-                </Text>
-                <Flex
-                  flexDirection="row"
-                  justifyContent="center"
-                  alignItems="center"
-                  my={2}
-                >
-                  <Text color="#166079" fontSize={24} fontWeight="bold">
-                    vault
-                  </Text>
-                  <Text
-                    color={currentTheme === "light" ? "#474A48" : "#ffffff"}
-                    fontSize={24}
-                    fontWeight="bold"
-                  >
-                    pocket
-                  </Text>
-                </Flex>
-                <Image
-                  source={require("./../assets/images/avatar_girl.png")}
-                  alt="Avatar Girl"
-                  size={56}
-                />
-              </Box>
+          <FlatList
+            data={passwords}
+            renderItem={({ item }) => (
+              <List
+                item={item}
+                setIsCopy={setIsCopy}
+                editPassword={editPassword}
+              />
             )}
-          </Box>
+            keyExtractor={(item) => item.id}
+            contentContainerStyle={{ padding: 15 }}
+          />
         )}
-      </ScrollView>
+
+        <Fab
+          renderInPortal={false}
+          shadow={2}
+          size="sm"
+          icon={
+            <Icon color="white" as={<Text>+</Text>} size="sm" />
+          }
+          onPress={() => navigation.navigate("AddPassword")}
+        />
+      </Box>
     </SafeAreaView>
   );
 };

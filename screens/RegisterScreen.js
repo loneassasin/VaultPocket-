@@ -1,22 +1,18 @@
 import { useNavigation } from "@react-navigation/native";
 import { StatusBar } from "expo-status-bar";
-import { getDatabase, ref, set } from "firebase/database";
-import { Box, Button, Flex, Image, Input, Text, useToast } from "native-base";
-import { useContext, useState } from "react";
+import { doc, setDoc } from "firebase/firestore";
+import { Box, Button, Flex, Input, Text, useToast } from "native-base";
+import { useCallback, useContext, useState } from "react";
 import { ActivityIndicator } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { PasswordStrengthIndicator } from "./../components";
-import { app } from "./../services/firebase";
+import { app, db } from "./../services/firebase";
 import { ThemeContext, darkTheme, lightTheme } from "./../utils";
 import { signUp } from "./../utils/handlers";
 
-const database = getDatabase(app);
-
 export const RegisterScreen = () => {
   const { currentTheme } = useContext(ThemeContext);
-
   const navigation = useNavigation();
-
   const toast = useToast();
 
   const [name, setName] = useState("");
@@ -27,210 +23,164 @@ export const RegisterScreen = () => {
 
   const theme = currentTheme === "light" ? lightTheme : darkTheme;
 
+  const showToast = useCallback((message, type = "error") => {
+    toast.show({
+      render: () => (
+        <Box
+          bg={type === "success" ? "#0E660C" : "#730000"}
+          px={4}
+          py={2}
+          rounded="md"
+          mb={5}
+        >
+          <Text color="#ffffff">{message}</Text>
+        </Box>
+      ),
+    });
+  }, [toast]);
+
   const handleSubmit = async () => {
-    if (name && email && password) {
-      setLoad(true);
-      try {
-        const res = await signUp(email, password);
+    if (!name || !email || !password) {
+      showToast("All Fields Must be Filled!");
+      return;
+    }
 
-        if (res.user) {
-          const userRef = ref(database, `users/${res.user.uid}`);
-          set(userRef, {
-            email,
-            name,
-            id: userRef.key,
-          }).then(() => {
-            setName("");
-            setEmail("");
-            setPassword("");
-            setLoad(false);
-
-            // navigation.navigate("Login");
-
-            toast.show({
-              render: () => {
-                return (
-                  <Box
-                    bg={currentTheme === "light" ? "#000000" : "#ffffff"}
-                    px={12}
-                    py={0.5}
-                    rounded="md"
-                    mb={5}
-                    borderWidth={1}
-                  >
-                    <Text
-                      color={currentTheme === "light" ? "#ffffff" : "#000000"}
-                    >
-                      Account Created Successfully
-                    </Text>
-                  </Box>
-                );
-              },
-            });
-          });
-        }
-      } catch (error) {
-        setLoad(false);
-
-        toast.show({
-          render: () => {
-            return (
-              <Box
-                bg={currentTheme === "light" ? "#000000" : "#ffffff"}
-                px={12}
-                py={0.5}
-                rounded="md"
-                mb={5}
-                borderWidth={1}
-              >
-                <Text color={currentTheme === "light" ? "#ffffff" : "#000000"}>
-                  {error?.message}
-                </Text>
-              </Box>
-            );
-          },
+    setLoad(true);
+    try {
+      const res = await signUp(email, password);
+      if (res.user) {
+        const userDocRef = doc(db, 'users', res.user.uid);
+        await setDoc(userDocRef, {
+          email,
+          name,
+          id: res.user.uid,
+          createdAt: new Date(),
         });
+
+        setName("");
+        setEmail("");
+        setPassword("");
+        showToast("Account Created Successfully", "success");
       }
-    } else {
-      toast.show({
-        render: () => {
-          return (
-            <Box
-              bg={currentTheme === "light" ? "#000000" : "#ffffff"}
-              px={12}
-              py={0.5}
-              rounded="md"
-              mb={5}
-              borderWidth={1}
-            >
-              <Text color={currentTheme === "light" ? "#ffffff" : "#000000"}>
-                All Fields Must be Filled!
-              </Text>
-            </Box>
-          );
-        },
-      });
+    } catch (error) {
+      showToast(error?.message || "Registration failed");
+    } finally {
+      setLoad(false);
     }
   };
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }}>
       <StatusBar style="auto" />
-      <Flex
-        h="full"
-        w={64}
-        mx="auto"
-        justifyContent="center"
-        alignItems="center"
-      >
+      <Box flex={1} px={4} py={2} justifyContent="center">
         <Text fontSize={16} color={theme.text}>
-          Let's get started
+          Create Account
         </Text>
         <Text color="#A9A9A9" fontSize={16} mt={2} mb={4}>
-          Enter your register information
+          Enter your information
         </Text>
+
         <Input
           placeholder="Name"
           mb={4}
           borderWidth={0}
-          borderBottomWidth={1}
-          borderBottomColor={theme.text}
-          borderRadius={0}
-          color={theme.text}
-          placeholderTextColor={theme.lightgrey}
+          bgColor="#D9D9D9BF"
+          py={4}
           fontSize={16}
           value={name}
-          onChangeText={setName}
+          onChangeText={(text) => setName(text)}
+          autoComplete="off"
+          returnKeyType="next"
+          _focus={{
+            backgroundColor: "#D9D9D9BF",
+            borderWidth: 0
+          }}
         />
+
         <Input
           placeholder="Email"
           mb={4}
           borderWidth={0}
-          borderBottomWidth={1}
-          borderBottomColor={theme.text}
-          borderRadius={0}
-          color={theme.text}
-          placeholderTextColor={theme.lightgrey}
+          bgColor="#D9D9D9BF"
+          py={4}
           fontSize={16}
           value={email}
-          onChangeText={setEmail}
+          onChangeText={(text) => setEmail(text)}
+          keyboardType="email-address"
+          autoCapitalize="none"
+          autoComplete="off"
+          returnKeyType="next"
+          _focus={{
+            backgroundColor: "#D9D9D9BF",
+            borderWidth: 0
+          }}
         />
-        <Box flexDirection="row" alignItems="center" borderRadius={6}>
+
+        <Box mb={4}>
           <Input
-            type={showPassword ? "text" : "password"}
             placeholder="Master Password"
             borderWidth={0}
-            borderBottomWidth={1}
-            borderBottomColor={theme.text}
-            borderRadius={0}
-            color={theme.text}
-            placeholderTextColor={theme.lightgrey}
+            bgColor="#D9D9D9BF"
+            py={4}
             fontSize={16}
             value={password}
-            onChangeText={setPassword}
+            onChangeText={(text) => setPassword(text)}
+            type={showPassword ? "text" : "password"}
+            autoComplete="off"
+            returnKeyType="done"
+            _focus={{
+              backgroundColor: "#D9D9D9BF",
+              borderWidth: 0
+            }}
+            InputRightElement={
+              <Button
+                size="xs"
+                rounded="none"
+                w="1/6"
+                h="full"
+                onPress={() => setShowPassword(!showPassword)}
+              >
+                {showPassword ? "Hide" : "Show"}
+              </Button>
+            }
           />
-          <Button
-            variant="unstyled"
-            h="full"
-            px={2}
-            onPress={() => setShowPassword(!showPassword)}
-            borderTopLeftRadius={0}
-            borderTopRightRadius={6}
-            borderBottomLeftRadius={0}
-            borderBottomRightRadius={6}
-            position={"absolute"}
-            right={5}
-            zIndex={11}
-          >
-            {showPassword && (
-              <Image
-                source={require("./../assets/images/hidden.png")}
-                alt="Hidden"
-                size={4}
-                tintColor={theme.text}
-              />
-            )}
-            {!showPassword && (
-              <Image
-                source={require("./../assets/images/eye.png")}
-                alt="Eye"
-                size={4}
-                tintColor={theme.text}
-              />
-            )}
-          </Button>
+          <PasswordStrengthIndicator password={password} />
         </Box>
-        <PasswordStrengthIndicator password={password} />
-        {load ? (
-          <ActivityIndicator size={"small"} color={"black"} />
-        ) : (
-          <Button
-            w="full"
-            fontSize={20}
-            fontWeight="bold"
-            borderRadius={6}
-            onPress={() => handleSubmit()}
-          >
-            Create account
-          </Button>
-        )}
-        <Flex flexDirection="row" mt={4}>
-          <Text fontSize={20} color={theme.text}>
+
+        <Button
+          w="full"
+          bgColor="#0E660C"
+          py={4}
+          borderRadius={6}
+          onPress={handleSubmit}
+          isDisabled={load}
+          mb={4}
+        >
+          {load ? (
+            <ActivityIndicator color="#ffffff" />
+          ) : (
+            <Text fontWeight="bold" color="#ffffff">
+              Register
+            </Text>
+          )}
+        </Button>
+
+        <Flex flexDirection="row" justifyContent="center">
+          <Text fontSize={16} color={theme.text}>
             Already have an account?{" "}
           </Text>
           <Button
             variant="link"
             p={0}
             m={0}
-            color="#166079"
             onPress={() => navigation.navigate("Login")}
           >
-            <Text fontSize="lg" fontWeight="bold" color={theme.text}>
+            <Text fontSize={16} fontWeight="bold" color={theme.text}>
               Login
             </Text>
           </Button>
         </Flex>
-      </Flex>
+      </Box>
     </SafeAreaView>
   );
 };

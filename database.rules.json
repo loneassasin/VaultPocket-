@@ -1,0 +1,46 @@
+{
+  "rules": {
+    "users": {
+      "$uid": {
+        // Only authenticated users can read and write their own data
+        ".read": "$uid === auth.uid",
+        ".write": "$uid === auth.uid",
+        
+        "passwords": {
+          ".indexOn": ["siteName"],
+          "$passwordId": {
+            // Validate password data structure
+            ".validate": "newData.hasChildren(['id', 'siteName', 'username', 'password'])",
+            "id": {
+              ".validate": "newData.isString()"
+            },
+            "siteName": {
+              ".validate": "newData.isString() && newData.val().length > 0"
+            },
+            "username": {
+              ".validate": "newData.isString()"
+            },
+            "password": {
+              ".validate": "newData.isString()"
+            },
+            // Optional fields validation
+            "icon": {
+              ".validate": "newData.isString() || !newData.exists()"
+            },
+            "$other": {
+              ".validate": false
+            }
+          }
+        },
+        "$other": {
+          ".validate": false
+        }
+      }
+    },
+    // Deny read/write access to all other paths
+    "$other": {
+      ".read": false,
+      ".write": false
+    }
+  }
+}

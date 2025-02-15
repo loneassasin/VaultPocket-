@@ -1,218 +1,173 @@
-import { useNavigation } from "@react-navigation/native";
+import { useIsFocused, useNavigation } from "@react-navigation/native";
 import { StatusBar } from "expo-status-bar";
-import { getDatabase, onValue, ref, remove } from "firebase/database";
-import {
-  Box,
-  Flex,
-  Image,
-  Input,
-  ScrollView,
-  Text,
-  useToast,
-  View,
-} from "native-base";
-import { useContext, useEffect, useState } from "react";
+import { collection, deleteDoc, doc, onSnapshot, orderBy, query } from "firebase/firestore";
+import { Box, Button, Flex, Icon, Text, useToast } from "native-base";
+import { useCallback, useContext, useEffect, useState } from "react";
+import { ActivityIndicator, FlatList } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { AppLoader, List } from "./../components";
-import { app, auth } from "./../services/firebase";
+import { List } from "./../components";
+import { auth, db } from "./../services/firebase";
 import { ThemeContext, darkTheme, lightTheme } from "./../utils";
-
-const DATA = [
-  {
-    id: 1,
-    icon: require("./../assets/images/netflix.png"),
-    siteName: "netflix",
-    username: "admin@netflix.com",
-    password: "123456",
-  },
-  {
-    id: 2,
-    icon: require("./../assets/images/amazon.png"),
-    siteName: "amazon",
-    username: "admin@amazon.com",
-    password: "123456",
-  },
-  {
-    id: 3,
-    icon: require("./../assets/images/gmail.png"),
-    siteName: "gmail",
-    username: "admin@gmail.com",
-    password: "123456",
-  },
-  {
-    id: 4,
-    icon: require("./../assets/images/vk.png"),
-    siteName: "vk",
-    username: "admin@vk.com",
-    password: "123456",
-  },
-  {
-    id: 5,
-    icon: require("./../assets/images/udemy.png"),
-    siteName: "udemy",
-    username: "admin@udemy.com",
-    password: "123456",
-  },
-  {
-    id: 6,
-    icon: require("./../assets/images/slack.png"),
-    siteName: "slack",
-    username: "admin@slack.com",
-    password: "123456",
-  },
-];
-
-const database = getDatabase(app);
+import { decryptData, generateEncryptionKey } from "./../utils/encryption";
 
 export const KeysScreen = () => {
   const { currentTheme } = useContext(ThemeContext);
-
   const navigation = useNavigation();
-
+  const isFocused = useIsFocused();
   const toast = useToast();
 
   const [isLoading, setIsLoading] = useState(false);
-  const [userID, setUserID] = useState("");
-  const [passwords, setPasswords] = useState({});
+  const [passwords, setPasswords] = useState([]);
   const [isCopy, setIsCopy] = useState(false);
-  const [search, setSearch] = useState("");
+  const [encryptionKey, setEncryptionKey] = useState("");
+
   const theme = currentTheme === "light" ? lightTheme : darkTheme;
 
-  const fetchPasswords = async () => {
+  useEffect(() => {
+    if (auth.currentUser) {
+      const key = generateEncryptionKey(auth.currentUser.uid);
+      setEncryptionKey(key);
+    }
+  }, []);
+
+  const fetchPasswords = useCallback(() => {
     const user = auth.currentUser;
+    if (!user || !encryptionKey) {
+      if (!user) navigation.replace('Login');
+      return;
+    }
 
     try {
       setIsLoading(true);
-      const userRef = ref(database, `users/${user.uid}`);
+      const passwordsRef = collection(db, 'users', user.uid, 'passwords');
+      const q = query(passwordsRef, orderBy('createdAt', 'desc'));
 
-      onValue(userRef, async (snapshot) => {
-        const data = snapshot.val();
-
-        // setUserID(user.uid);
-        if (data?.passwords) {
-          const passwordData = Object.values(data?.passwords);
-          setPasswords(passwordData);
-          setIsLoading(false);
-        } else {
-          setIsLoading(false);
-        }
+      return onSnapshot(q, (snapshot) => {
+        const passwordsList = [];
+        snapshot.forEach((doc) => {
+          const data = doc.data();
+          try {
+            // Decrypt the password
+            const decryptedPassword = decryptData(data.password, encryptionKey);
+            if (decryptedPassword) {
+              passwordsList.push({
+                id: doc.id,
+                siteName: data.siteName || '',
+                username: data.username || '',
+                password: decryptedPassword,
+                url: data.url || '',
+                createdAt: data.createdAt,
+                updatedAt: data.updatedAt,
+              });
+            }
+          } catch (error) {
+            console.error("Error decrypting password:", error);
+          }
+        });
+        setPasswords(passwordsList);
+        setIsLoading(false);
+      }, (error) => {
+        console.error("Error fetching passwords:", error);
+        setIsLoading(false);
       });
     } catch (error) {
-      console.error("Keys Screen error", error);
+      console.error("Error setting up password listener:", error);
       setIsLoading(false);
     }
-  };
+  }, [navigation, encryptionKey]);
 
-  const deletePassword = (id) => {
-    const user = auth.currentUser;
-    setIsLoading(true);
-    const passwordRef = ref(database, `users/${user?.uid}/passwords/${id}`);
-    remove(passwordRef);
-    fetchPasswords();
+  useEffect(() => {
+    const unsubscribe = fetchPasswords();
+    return () => {
+      if (typeof unsubscribe === 'function') {
+        unsubscribe();
+      }
+    };
+  }, [fetchPasswords]);
+
+  const deletePassword = async (id) => {
+    try {
+      const user = auth.currentUser;
+      if (!user) {
+        navigation.replace('Login');
+        return;
+      }
+
+      setIsLoading(true);
+      const passwordRef = doc(db, 'users', user.uid, 'passwords', id);
+      await deleteDoc(passwordRef);
+
+      toast.show({
+        render: () => (
+          <Box bg="#0E660C" px={4} py={2} rounded="md" mb={5}>
+            <Text color="#ffffff">Password Deleted Successfully</Text>
+          </Box>
+        ),
+      });
+    } catch (error) {
+      console.error("Error deleting password:", error);
+      toast.show({
+        render: () => (
+          <Box bg="#730000" px={4} py={2} rounded="md" mb={5}>
+            <Text color="#ffffff">Error deleting password</Text>
+          </Box>
+        ),
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const editPassword = (item) => {
     navigation.navigate("AddPassword", { item });
   };
 
-  useEffect(() => {
-    fetchPasswords();
-  }, []);
+  if (isLoading) {
+    return (
+      <Flex flex={1} justify="center" align="center">
+        <ActivityIndicator size="large" color={theme.text} />
+      </Flex>
+    );
+  }
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }}>
       <StatusBar style="auto" />
-      <ScrollView showsVerticalScrollIndicator={false}>
-        <Box mx={5}>
-          <Flex my={4} h={16}>
-            <Text color={theme.text}>Passwords</Text>
-            <Flex
-              flexDirection="row"
-              alignItems="center"
-              my={2}
-              px={4}
-              py={2}
-              bgColor="#D9D9D9"
-              borderRadius={12}
-            >
-              <Image
-                source={require("./../assets/images/search.png")}
-                alt="Search"
-                w={5}
-                h={5}
-                ml={1}
-              />
-              <Input
-                borderWidth={0}
-                mx={2}
-                // p={0.5}
-                // py={2}
-                fontSize={16}
-                placeholder="Search by site name..."
-                placeholderTextColor="#000000"
-                color="#000000"
-                bgColor="#D9D9D9"
-                value={search}
-                onChangeText={(i) => setSearch(i)}
-              />
-            </Flex>
+      <Box flex={1} bg={theme.background} safeArea>
+        <Flex
+          direction="row"
+          justify="space-between"
+          align="center"
+          px={4}
+          py={4}
+        >
+          <Text color={theme.text} fontSize="2xl" fontWeight="bold">
+            Keys
+          </Text>
+        </Flex>
+
+        {passwords.length === 0 ? (
+          <Flex flex={1} justify="center" align="center">
+            <Text color={theme.text} fontSize="lg">
+              No passwords added yet
+            </Text>
           </Flex>
-          {isLoading ? (
-            <AppLoader />
-          ) : passwords.length ? (
-            <Flex mt={6}>
-              {passwords
-                .filter((i) => {
-                  if (i.siteName === "") {
-                    return;
-                  } else {
-                    return i?.siteName
-                      .toLowerCase()
-                      .includes(search.toLowerCase());
-                  }
-                })
-                .map((item) => (
-                  <List
-                    key={item.id.toString()}
-                    item={item}
-                    setIsCopy={setIsCopy}
-                    toast={toast}
-                    deletePassword={deletePassword}
-                    editPassword={editPassword}
-                  />
-                ))}
-            </Flex>
-          ) : (
-            <Box my={"1/4"} justifyContent="center" alignItems="center">
-              <Text color={theme.text}>
-                Add your first password to experience the magic
-              </Text>
-              <Flex
-                flexDirection="row"
-                justifyContent="center"
-                alignItems="center"
-                my={2}
-              >
-                <Text color="#166079" fontSize={24} fontWeight="bold">
-                  vault
-                </Text>
-                <Text
-                  color={currentTheme === "light" ? "#474A48" : "#ffffff"}
-                  fontSize={24}
-                  fontWeight="bold"
-                >
-                  pocket
-                </Text>
-              </Flex>
-              <Image
-                source={require("./../assets/images/avatar_girl.png")}
-                alt="Avatar Girl"
-                size={56}
+        ) : (
+          <FlatList
+            data={passwords}
+            renderItem={({ item }) => (
+              <List
+                item={item}
+                setIsCopy={setIsCopy}
+                editPassword={editPassword}
+                deletePassword={deletePassword}
               />
-            </Box>
-          )}
-        </Box>
-      </ScrollView>
+            )}
+            keyExtractor={(item) => item.id}
+            contentContainerStyle={{ padding: 15 }}
+          />
+        )}
+      </Box>
     </SafeAreaView>
   );
 };

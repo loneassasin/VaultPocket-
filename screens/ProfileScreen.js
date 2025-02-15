@@ -1,59 +1,71 @@
 import { useNavigation } from "@react-navigation/native";
 import { StatusBar } from "expo-status-bar";
 import { signOut } from "firebase/auth";
-import { getDatabase, onValue, ref } from "firebase/database";
+import { onValue, ref } from "firebase/database";
 import { Box, Button, Image, Switch, Text } from "native-base";
 import { useContext, useEffect, useState } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { app, auth } from "./../services/firebase";
+import { app, auth, database } from "./../services/firebase";
 import { ThemeContext, darkTheme, lightTheme } from "./../utils";
 import { ActivityIndicator } from "react-native";
 
-// const auth = getAuth(app);
-const database = getDatabase(app);
-
 export const ProfileScreen = () => {
   const navigation = useNavigation();
-
   const { currentTheme, toggleTheme } = useContext(ThemeContext);
 
   const [isLoading, setIsLoading] = useState(false);
-  const [user, setUser] = useState({});
+  const [userData, setUserData] = useState(null);
 
   const theme = currentTheme === "light" ? lightTheme : darkTheme;
 
   const fetchUser = async () => {
-    const user = auth.currentUser;
+    const currentUser = auth.currentUser;
+    
+    if (!currentUser) {
+      navigation.replace('Login');
+      return;
+    }
 
     try {
       setIsLoading(true);
-      const userRef = ref(database, `users/${user.uid}`);
+      const userRef = ref(database, `users/${currentUser.uid}`);
 
-      onValue(userRef, async (snapshot) => {
+      onValue(userRef, (snapshot) => {
         const data = snapshot.val();
-
-        setUser(data);
-
+        setUserData(data || {
+          name: currentUser.displayName,
+          email: currentUser.email
+        });
+        setIsLoading(false);
+      }, (error) => {
+        console.error("Profile Screen error:", error);
         setIsLoading(false);
       });
     } catch (error) {
-      console.error("Keys Screen error", error);
+      console.error("Profile Screen error:", error);
       setIsLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchUser();
+    const unsubscribe = auth.onAuthStateChanged((user) => {
+      if (!user) {
+        navigation.replace('Login');
+      } else {
+        fetchUser();
+      }
+    });
+
+    return () => unsubscribe();
   }, []);
 
-  const handleLogout = () => {
-    signOut(auth)
-      .then(() => {
-        console.log("User logged out successfully:");
-      })
-      .catch((error) => {
-        console.log("Error", error);
-      });
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+      navigation.replace('Login');
+    } catch (error) {
+      console.error("Logout error:", error);
+    }
   };
 
   return (
@@ -69,7 +81,7 @@ export const ProfileScreen = () => {
           />
         </Box>
         {isLoading ? (
-          <ActivityIndicator size={24} color={"black"} />
+          <ActivityIndicator size={24} color={theme.text} />
         ) : (
           <Text
             textAlign="center"
@@ -77,7 +89,7 @@ export const ProfileScreen = () => {
             fontWeight="bold"
             color={theme.text}
           >
-            {user.name}
+            {userData?.name || auth.currentUser?.displayName || 'User'}
           </Text>
         )}
 
@@ -97,116 +109,39 @@ export const ProfileScreen = () => {
         <Box my={2.5} px={4} py={2} bgColor="#D9D9D9" borderRadius={12}>
           <Text fontSize={14}>Username</Text>
           <Text fontSize={14} opacity={0.5}>
-            {user.email}
+            {userData?.email || auth.currentUser?.email || ''}
           </Text>
         </Box>
+
         <Box
           flexDirection="row"
           justifyContent="space-between"
           alignItems="center"
+          my={2.5}
           px={4}
+          py={2}
           bgColor="#D9D9D9"
           borderRadius={12}
-          py={2}
         >
           <Text fontSize={14}>Dark Mode</Text>
           <Switch
-            size="md"
-            h={8}
-            onTrackColor="#0E660C"
-            offTrackColor="#730000"
-            value={currentTheme === "dark"}
-            onValueChange={toggleTheme}
+            size="lg"
+            onToggle={toggleTheme}
+            isChecked={currentTheme === "dark"}
           />
         </Box>
-        <Box
-          flexDirection="row"
-          justifyContent="space-between"
-          alignItems="center"
-          mt={2}
-          px={4}
-          py={3}
-          bgColor="#D9D9D9"
-          borderRadius={12}
-        >
-          <Text fontSize={14}>Change Master Password</Text>
-          <Image
-            source={require("./../assets/images/chevron.png")}
-            alt="Chevron"
-            size={4}
-          />
-        </Box>
-        <Box
-          flexDirection="row"
-          justifyContent="space-between"
-          alignItems="center"
-          px={4}
-          py={3}
-          mt={2}
-          bgColor="#D9D9D9"
-          borderRadius={12}
-        >
-          <Text fontSize={14}>Clear Clipboard</Text>
-          <Box flexDirection="row" alignItems="center">
-            <Text color={"#000000"} opacity={0.5}>
-              30 Seconds
-            </Text>
-            <Image
-              source={require("./../assets/images/chevron.png")}
-              alt="Chevron"
-              size={4}
-            />
-          </Box>
-        </Box>
-        <Box
-          flexDirection="row"
-          justifyContent="space-between"
-          alignItems="center"
-          my={1}
-          px={4}
-          py={3}
-          mt={2}
-          bgColor="#D9D9D9"
-          borderRadius={12}
-        >
-          <Text fontSize={14}>Auto logout</Text>
-          <Box flexDirection="row" alignItems="center">
-            <Text color={"#000000"} opacity={0.5}>
-              Never
-            </Text>
-            <Image
-              source={require("./../assets/images/chevron.png")}
-              alt="Chevron"
-              size={4}
-            />
-          </Box>
-        </Box>
-        <Box w="full" position="absolute" bottom={24} left={0}>
+
+        <Box position="absolute" bottom={10} w="full">
           <Button
-            bgColor="#C30E0E"
-            onPress={
-              handleLogout
-              // async () => {
-              // signOut(auth).then(async () => {
-              //   await AsyncStorage.removeItem("user").then(() =>
-              //     navigation.navigate("Login")
-              //   );
-              // });
-              // }
-            }
-            borderRadius={12}
+            w="full"
+            py={4}
+            bgColor="#166079"
+            _pressed={{ bgColor: "#166079" }}
+            onPress={handleLogout}
           >
-            <Box flexDirection="row" alignItems="center">
-              <Image
-                source={require("./../assets/images/logout.png")}
-                alt="Log out"
-                size={7}
-                mx={1}
-              />
-              <Text fontSize={32} color="#ffffff">
-                Log Out
-              </Text>
-            </Box>
+            <Text color="#ffffff" fontSize={16} fontWeight="bold">
+              Logout
+            </Text>
           </Button>
         </Box>
       </Box>

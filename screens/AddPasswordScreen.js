@@ -1,39 +1,24 @@
 import { useIsFocused, useNavigation, useRoute } from "@react-navigation/native";
 import { StatusBar } from "expo-status-bar";
 import { doc, collection, addDoc, updateDoc } from "firebase/firestore";
-import { getFirestore } from "firebase/firestore";
-import { KeyboardAvoidingView, Platform, ScrollView } from "react-native";
+import { Box, Button, Icon, Input, Slider, Switch, Text, useToast, VStack, HStack, IconButton, Modal, ScrollView, Pressable } from "native-base";
+import { useCallback, useContext, useEffect, useState } from "react";
+import { KeyboardAvoidingView, Platform, Clipboard } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { Ionicons } from '@expo/vector-icons';
 import { AppLoader } from "./../components";
 import { auth, db } from "./../services/firebase";
-import {
-  Actionsheet,
-  Box,
-  Button,
-  Image,
-  Input,
-  Slider,
-  Switch,
-  Text,
-  useDisclose,
-  useToast,
-} from "native-base";
-import { useCallback, useContext, useEffect, useState, useMemo } from "react";
-import { ThemeContext, darkTheme, encryptData, decryptData, generatePassword, generateEncryptionKey, lightTheme } from "./../utils";
-
-//const db = getFirestore(app);
+import { ThemeContext, darkTheme, lightTheme } from "./../utils";
+import { encryptData, decryptData, generateEncryptionKey } from "./../utils/encryption";
+import { generatePassword } from "./../utils/handlers";
 
 export const AddPasswordScreen = () => {
-  const { isOpen, onOpen, onClose } = useDisclose();
-  const { currentTheme } = useContext(ThemeContext);
   const navigation = useNavigation();
   const route = useRoute();
   const isFocused = useIsFocused();
   const toast = useToast();
-
-  // Get the current user's UID for encryption
-  const currentUser = auth.currentUser;
-  const encryptionKey = useMemo(() => generateEncryptionKey(currentUser?.uid), [currentUser?.uid]);
+  const { currentTheme } = useContext(ThemeContext);
+  const theme = currentTheme === "light" ? lightTheme : darkTheme;
 
   const [isLoading, setIsLoading] = useState(false);
   const [siteName, setSiteName] = useState("");
@@ -41,37 +26,18 @@ export const AddPasswordScreen = () => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [showGenerator, setShowGenerator] = useState(false);
+
+  // Password generator options
+  const [passwordLength, setPasswordLength] = useState(16);
   const [isIncludeNumbersEnabled, setIsIncludeNumbersEnabled] = useState(true);
-  const [isIncludeUppercaseEnabled, setIsIncludeUppercaseEnabled] = useState(false);
-  const [isIncludeLowercaseEnabled, setIsIncludeLowercaseEnabled] = useState(false);
-  const [isIncludeSymbolsEnabled, setIsIncludeSymbolsEnabled] = useState(false);
-  const [passwordLength, setPasswordLength] = useState(12);
-  const [generatedPassword, setGeneratedPassword] = useState("");
+  const [isIncludeUppercaseEnabled, setIsIncludeUppercaseEnabled] = useState(true);
+  const [isIncludeLowercaseEnabled, setIsIncludeLowercaseEnabled] = useState(true);
+  const [isIncludeSymbolsEnabled, setIsIncludeSymbolsEnabled] = useState(true);
 
-  const theme = currentTheme === "light" ? lightTheme : darkTheme;
+  const currentUser = auth.currentUser;
+  const encryptionKey = generateEncryptionKey(currentUser?.uid);
 
-  // Memoize password options to prevent unnecessary re-renders
-  const passwordOptions = useMemo(() => ({
-    length: passwordLength,
-    numbers: isIncludeNumbersEnabled,
-    uppercase: isIncludeUppercaseEnabled,
-    lowercase: isIncludeLowercaseEnabled,
-    symbols: isIncludeSymbolsEnabled
-  }), [
-    passwordLength,
-    isIncludeNumbersEnabled,
-    isIncludeUppercaseEnabled,
-    isIncludeLowercaseEnabled,
-    isIncludeSymbolsEnabled
-  ]);
-
-  // Debounced password generation
-  const handleGeneratePassword = useCallback(() => {
-    const newPassword = generatePassword(passwordOptions);
-    setGeneratedPassword(newPassword);
-  }, [passwordOptions]);
-
-  // Load existing password data
   useEffect(() => {
     const item = route.params?.item;
     if (item && isFocused) {
@@ -79,47 +45,69 @@ export const AddPasswordScreen = () => {
       setURL(item.url || "");
       setUsername(item.username || "");
       try {
-        // Safely decrypt the password with error handling
         const decryptedPassword = item.password ? decryptData(item.password, encryptionKey) : "";
-        if (!decryptedPassword && item.password) {
-          console.warn("Failed to decrypt password");
-        }
         setPassword(decryptedPassword);
       } catch (error) {
         console.error("Error decrypting password:", error);
         setPassword("");
       }
+    } else if (!item && isFocused) {
+      // Reset fields when entering the screen for a new password
+      resetFields();
     }
-  }, [isFocused, encryptionKey]);
+  }, [route.params, encryptionKey]);
 
-  // Generate password when options change
-  useEffect(() => {
-    const timeoutId = setTimeout(handleGeneratePassword, 300);
-    return () => clearTimeout(timeoutId);
-  }, [handleGeneratePassword]);
+  const resetFields = () => {
+    setSiteName("");
+    setURL("");
+    setUsername("");
+    setPassword("");
+    setShowPassword(false);
+    // Reset password generator options to defaults
+    setPasswordLength(16);
+    setIsIncludeNumbersEnabled(true);
+    setIsIncludeUppercaseEnabled(true);
+    setIsIncludeLowercaseEnabled(true);
+    setIsIncludeSymbolsEnabled(true);
+  };
 
-  const handleSavePassword = async () => {
+  const handleGeneratePassword = useCallback(async () => {
+    const newPassword = generatePassword({
+      length: passwordLength,
+      numbers: isIncludeNumbersEnabled,
+      uppercase: isIncludeUppercaseEnabled,
+      lowercase: isIncludeLowercaseEnabled,
+      symbols: isIncludeSymbolsEnabled,
+    });
+    
+    setPassword(newPassword);
+    setShowGenerator(false);
+    
     try {
-      if (!currentUser) {
-        toast.show({
-          title: "Error",
-          description: "You must be logged in to save passwords",
-          status: "error",
-        });
-        return;
-      }
+      await Clipboard.setString(newPassword);
+      toast.show({
+        title: "Success",
+        description: "New password copied to clipboard",
+        status: "success",
+        duration: 2000,
+      });
+    } catch (error) {
+      console.error("Failed to copy to clipboard:", error);
+    }
+  }, [passwordLength, isIncludeNumbersEnabled, isIncludeUppercaseEnabled, isIncludeLowercaseEnabled, isIncludeSymbolsEnabled]);
 
-      if (!siteName || !username || !password) {
-        toast.show({
-          render: () => (
-            <Box bg="#730000" px={4} py={2} rounded="md" mb={5}>
-              <Text color="#ffffff">All Fields Must be Filled!</Text>
-            </Box>
-          ),
-        });
-        return;
-      }
+  const handleSave = async () => {
+    if (!siteName || !username || !password) {
+      toast.show({
+        title: "Required Fields",
+        description: "Please fill in all required fields",
+        status: "warning",
+        duration: 2000,
+      });
+      return;
+    }
 
+    try {
       setIsLoading(true);
       const passwordData = {
         siteName,
@@ -127,345 +115,267 @@ export const AddPasswordScreen = () => {
         password: encryptData(password, encryptionKey),
         url: url || '',
         updatedAt: new Date(),
-        userId: currentUser.uid, // Add userId for security
+        userId: currentUser.uid,
       };
 
       if (route.params?.item) {
-        // Update existing password
         const passwordRef = doc(db, 'users', currentUser.uid, 'passwords', route.params.item.id);
         await updateDoc(passwordRef, passwordData);
+        toast.show({
+          title: "Success",
+          description: "Password updated successfully",
+          status: "success",
+          duration: 2000,
+        });
+        // Clear the route params before navigating back
+        navigation.setParams({ item: null });
+        navigation.goBack();
       } else {
-        // Add new password
         const passwordsRef = collection(db, 'users', currentUser.uid, 'passwords');
         await addDoc(passwordsRef, {
           ...passwordData,
           createdAt: new Date(),
         });
-      }
-
-      // Clear form after successful save
-      setSiteName("");
-      setURL("");
-      setUsername("");
-      setPassword("");
-      
-      toast.show({
-        render: () => (
-          <Box bg="emerald.500" px={4} py={2} rounded="md" mb={5}>
-            <Text color="#ffffff">Password Saved Successfully!</Text>
-          </Box>
-        ),
-      });
-
-      // Navigate back if editing
-      if (route.params?.item) {
-        navigation.goBack();
+        toast.show({
+          title: "Success",
+          description: "Password saved successfully",
+          status: "success",
+          duration: 2000,
+        });
+        resetFields();
       }
     } catch (error) {
       console.error("Error saving password:", error);
       toast.show({
-        render: () => (
-          <Box bg="#730000" px={4} py={2} rounded="md" mb={5}>
-            <Text color="#ffffff">{error.message || "Error saving password"}</Text>
-          </Box>
-        ),
+        title: "Error",
+        description: "Failed to save password",
+        status: "error",
+        duration: 2000,
       });
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleCloseBottomSheet = () => {
-    // Set the generated password on the password input
-    setPassword(generatedPassword);
-    onClose();
-  };
+  if (isLoading) {
+    return <AppLoader />;
+  }
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }}>
-      <StatusBar style="auto" />
-      {isLoading ? (
-        <AppLoader />
-      ) : (
-        <Box flex={1} px={4} py={2}>
-          <Box mb={4}>
-            <Text mx={1} color={theme.text}>
-              Site Name
-            </Text>
-            <Input
-              borderWidth={0}
-              bgColor="#D9D9D9BF"
-              py={4}
-              fontSize={16}
-              value={siteName}
-              onChangeText={(text) => setSiteName(text)}
-              placeholder="Enter site name"
-              placeholderTextColor={theme.lightgrey}
-              _focus={{
-                backgroundColor: "#D9D9D9BF",
-                borderWidth: 0
-              }}
-              autoComplete="off"
-              returnKeyType="next"
-            />
-          </Box>
+      <StatusBar style={currentTheme === "light" ? "dark" : "light"} />
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        style={{ flex: 1 }}
+      >
+        <ScrollView>
+          <VStack space={4} p={4}>
+            <HStack justifyContent="space-between" alignItems="center" mb={2}>
+              <Text fontSize="2xl" bold color={theme.text}>
+                {route.params?.item ? "Edit Password" : "Add New Password"}
+              </Text>
+              <IconButton
+                icon={<Icon as={Ionicons} name="close" />}
+                onPress={() => navigation.goBack()}
+                variant="ghost"
+                _icon={{ color: theme.textSecondary }}
+              />
+            </HStack>
 
-          <Box mb={4}>
-            <Text mx={1} color={theme.text}>
-              URL
-            </Text>
-            <Input
-              borderWidth={0}
-              bgColor="#D9D9D9BF"
-              py={4}
-              fontSize={16}
-              value={url}
-              onChangeText={(text) => setURL(text)}
-              placeholder="Enter URL"
-              placeholderTextColor={theme.lightgrey}
-              _focus={{
-                backgroundColor: "#D9D9D9BF",
-                borderWidth: 0
-              }}
-              autoComplete="off"
-              returnKeyType="next"
-              keyboardType="url"
-            />
-          </Box>
-
-          <Box mb={4}>
-            <Text mx={1} color={theme.text}>
-              Username/Login
-            </Text>
-            <Input
-              borderWidth={0}
-              bgColor="#D9D9D9BF"
-              py={4}
-              fontSize={16}
-              value={username}
-              onChangeText={(text) => setUsername(text)}
-              placeholder="Enter username/login"
-              placeholderTextColor={theme.lightgrey}
-              _focus={{
-                backgroundColor: "#D9D9D9BF",
-                borderWidth: 0
-              }}
-              autoComplete="off"
-              returnKeyType="next"
-            />
-          </Box>
-
-          <Box mb={4}>
-            <Text mx={1} color={theme.text}>
-              Password
-            </Text>
-            <Box flexDirection="row" alignItems="center">
+            <VStack space={4}>
               <Input
-                flex={1}
-                borderWidth={0}
-                bgColor="#D9D9D9BF"
-                py={4}
-                borderRadius={6}
-                fontSize={16}
-                value={password}
-                onChangeText={(text) => setPassword(text)}
-                placeholder="Enter password"
-                placeholderTextColor={theme.lightgrey}
-                type={showPassword ? "text" : "password"}
+                placeholder="Site Name *"
+                value={siteName}
+                onChangeText={setSiteName}
+                size="lg"
+                color={theme.text}
+                bg={theme.inputBg}
+                borderColor={theme.inputBorder}
                 _focus={{
-                  backgroundColor: "#D9D9D9BF",
-                  borderWidth: 0
+                  borderColor: theme.inputFocusBorder,
+                  bg: theme.inputFocusBg,
                 }}
-                autoComplete="off"
-                returnKeyType="done"
+                InputLeftElement={
+                  <Icon as={Ionicons} name="globe-outline" size={5} ml={2} color={theme.textSecondary} />
+                }
               />
-              <Button
-                variant="unstyled"
-                h="full"
-                px={2}
-                onPress={() => setShowPassword(!showPassword)}
-              >
-                {showPassword ? "Hide" : "Show"}
-              </Button>
-            </Box>
-          </Box>
 
-          <Button
-            w="full"
-            bgColor="#0E660C"
-            py={4}
-            borderRadius={6}
-            onPress={handleSavePassword}
-            isDisabled={isLoading}
-          >
-            <Text fontWeight="bold" color="#ffffff">
-              Save Password
-            </Text>
-          </Button>
-        </Box>
-      )}
-      <Actionsheet isOpen={isOpen} onClose={() => handleCloseBottomSheet()}>
-        <Actionsheet.Content bgColor={theme.background}>
-          <Box w="100%" mt={6} px={4}>
-            <Text mx={1} color={theme.text}>
-              Select at least one option
-            </Text>
-            <Box
-              flexDirection="row"
-              justifyContent="space-between"
-              alignItems="center"
-              my={2}
-              px={4}
-              py={1}
-              bgColor="#D9D9D9"
-              borderRadius={12}
-            >
-              <Text fontSize={14}>Numbers (0-9)</Text>
-              <Switch
-                size="md"
-                onTrackColor="#0E660C"
-                offTrackColor="#730000"
-                defaultIsChecked
-                onChange={() => {
-                  setIsIncludeNumbersEnabled(!isIncludeNumbersEnabled);
+              <Input
+                placeholder="URL (optional)"
+                value={url}
+                onChangeText={setURL}
+                size="lg"
+                color={theme.text}
+                bg={theme.inputBg}
+                borderColor={theme.inputBorder}
+                _focus={{
+                  borderColor: theme.inputFocusBorder,
+                  bg: theme.inputFocusBg,
                 }}
+                InputLeftElement={
+                  <Icon as={Ionicons} name="link-outline" size={5} ml={2} color={theme.textSecondary} />
+                }
               />
-            </Box>
-            <Box
-              flexDirection="row"
-              justifyContent="space-between"
-              alignItems="center"
-              my={2}
-              px={4}
-              py={1}
-              bgColor="#D9D9D9"
-              borderRadius={12}
-            >
-              <Text fontSize={14}>Uppercase letters(A-Z)</Text>
-              <Switch
-                size="md"
-                onTrackColor="#0E660C"
-                offTrackColor="#730000"
-                onChange={() => {
-                  setIsIncludeUppercaseEnabled(!isIncludeUppercaseEnabled);
+
+              <Input
+                placeholder="Username *"
+                value={username}
+                onChangeText={setUsername}
+                size="lg"
+                color={theme.text}
+                bg={theme.inputBg}
+                borderColor={theme.inputBorder}
+                _focus={{
+                  borderColor: theme.inputFocusBorder,
+                  bg: theme.inputFocusBg,
                 }}
+                InputLeftElement={
+                  <Icon as={Ionicons} name="person-outline" size={5} ml={2} color={theme.textSecondary} />
+                }
               />
-            </Box>
-            <Box
-              flexDirection="row"
-              justifyContent="space-between"
-              alignItems="center"
-              my={2}
-              px={4}
-              py={1}
-              bgColor="#D9D9D9"
-              borderRadius={12}
-            >
-              <Text fontSize={14}>Lowercase letters(a-z)</Text>
-              <Switch
-                size="md"
-                onTrackColor="#0E660C"
-                offTrackColor="#730000"
-                onChange={() => {
-                  setIsIncludeLowercaseEnabled(!isIncludeLowercaseEnabled);
+
+              <Input
+                placeholder="Password *"
+                value={password}
+                onChangeText={setPassword}
+                type={showPassword ? "text" : "password"}
+                size="lg"
+                color={theme.text}
+                bg={theme.inputBg}
+                borderColor={theme.inputBorder}
+                _focus={{
+                  borderColor: theme.inputFocusBorder,
+                  bg: theme.inputFocusBg,
                 }}
+                InputLeftElement={
+                  <Icon as={Ionicons} name="lock-closed-outline" size={5} ml={2} color={theme.textSecondary} />
+                }
+                InputRightElement={
+                  <HStack space={2} mr={2}>
+                    <IconButton
+                      icon={<Icon as={Ionicons} name={showPassword ? "eye-off-outline" : "eye-outline"} />}
+                      onPress={() => setShowPassword(!showPassword)}
+                      variant="ghost"
+                      _icon={{ color: theme.textSecondary }}
+                    />
+                    <IconButton
+                      icon={<Icon as={Ionicons} name="refresh-outline" />}
+                      onPress={() => setShowGenerator(true)}
+                      variant="ghost"
+                      _icon={{ color: theme.textSecondary }}
+                    />
+                  </HStack>
+                }
               />
-            </Box>
-            <Box
-              flexDirection="row"
-              justifyContent="space-between"
-              alignItems="center"
-              my={2}
-              px={4}
-              py={1}
-              bgColor="#D9D9D9"
-              borderRadius={12}
+            </VStack>
+
+            <Button
+              onPress={handleSave}
+              size="lg"
+              bg={theme.primary}
+              _pressed={{ bg: theme.primaryDark }}
+              _text={{ color: theme.buttonText, fontWeight: "600" }}
+              leftIcon={<Icon as={Ionicons} name="save-outline" color={theme.buttonText} />}
+              mt={4}
             >
-              <Text fontSize={14}>Include symbols($%*)</Text>
-              <Switch
-                size="md"
-                onTrackColor="#0E660C"
-                offTrackColor="#730000"
-                onChange={() => {
-                  setIsIncludeSymbolsEnabled(!isIncludeSymbolsEnabled);
-                }}
-              />
-            </Box>
-            <Box my={2} px={2} borderRadius={12}>
-              <Text fontSize={14} color={theme.text}>
-                Password Length: {passwordLength}
-              </Text>
-              <Box
-                flexDirection="row"
-                justifyContent="center"
-                alignItems="center"
-                my={2}
-              >
-                <Text color={theme.text}>8</Text>
-                <Slider
-                  w={64}
-                  height={0.5}
-                  maxW={300}
-                  defaultValue={10}
-                  minValue={8}
-                  maxValue={20}
-                  accessibilityLabel="hello world"
-                  step={2}
-                  mx={2}
-                  value={passwordLength}
-                  onChange={(value) => {
-                    setPasswordLength(value);
-                  }}
-                >
-                  <Slider.Track bgColor="#0891B2">
-                    <Slider.FilledTrack />
-                  </Slider.Track>
-                  <Slider.Thumb bgColor="#ffffff" shadow={4} />
-                </Slider>
-                <Text color={theme.text}>20</Text>
+              {route.params?.item ? "Update Password" : "Save Password"}
+            </Button>
+          </VStack>
+        </ScrollView>
+      </KeyboardAvoidingView>
+
+      <Modal isOpen={showGenerator} onClose={() => setShowGenerator(false)} size="lg">
+        <Modal.Content maxWidth="400px" bg={theme.modalBg}>
+          <Modal.CloseButton _icon={{ color: theme.text }} />
+          <Modal.Header bg={theme.modalBg} borderColor={theme.border}>
+            <Text color={theme.text} fontSize="lg" bold>Password Generator</Text>
+          </Modal.Header>
+          <Modal.Body>
+            <VStack space={4}>
+              <Box bg={theme.primaryBg} p={4} rounded="md">
+                <Text color={theme.text} fontSize="md" textAlign="center" fontFamily="monospace">
+                  {password || "Generated password will appear here"}
+                </Text>
               </Box>
-            </Box>
-            <Box
-              flexDirection="row"
-              justifyContent="center"
-              alignItems="center"
-              bgColor="#0891B2"
-              p={4}
-              borderRadius={10}
-              mb={16}
-            >
-              <Text
-                color="#ffffff"
-                fontSize={16}
-                textAlign="center"
-                fontWeight="bold"
+
+              <VStack space={4}>
+                <VStack space={2}>
+                  <Text color={theme.text}>Length: {passwordLength}</Text>
+                  <Slider
+                    defaultValue={passwordLength}
+                    onChange={(v) => setPasswordLength(Math.floor(v))}
+                    minValue={8}
+                    maxValue={32}
+                    step={1}
+                    size="lg"
+                  >
+                    <Slider.Track bg={theme.sliderTrack}>
+                      <Slider.FilledTrack bg={theme.primary} />
+                    </Slider.Track>
+                    <Slider.Thumb bg={theme.primary} />
+                  </Slider>
+                </VStack>
+
+                <HStack justifyContent="space-between" alignItems="center">
+                  <Text color={theme.text}>Include Numbers</Text>
+                  <Switch
+                    isChecked={isIncludeNumbersEnabled}
+                    onToggle={() => setIsIncludeNumbersEnabled(!isIncludeNumbersEnabled)}
+                    onTrackColor={theme.primary}
+                  />
+                </HStack>
+
+                <HStack justifyContent="space-between" alignItems="center">
+                  <Text color={theme.text}>Include Uppercase</Text>
+                  <Switch
+                    isChecked={isIncludeUppercaseEnabled}
+                    onToggle={() => setIsIncludeUppercaseEnabled(!isIncludeUppercaseEnabled)}
+                    onTrackColor={theme.primary}
+                  />
+                </HStack>
+
+                <HStack justifyContent="space-between" alignItems="center">
+                  <Text color={theme.text}>Include Lowercase</Text>
+                  <Switch
+                    isChecked={isIncludeLowercaseEnabled}
+                    onToggle={() => setIsIncludeLowercaseEnabled(!isIncludeLowercaseEnabled)}
+                    onTrackColor={theme.primary}
+                  />
+                </HStack>
+
+                <HStack justifyContent="space-between" alignItems="center">
+                  <Text color={theme.text}>Include Symbols</Text>
+                  <Switch
+                    isChecked={isIncludeSymbolsEnabled}
+                    onToggle={() => setIsIncludeSymbolsEnabled(!isIncludeSymbolsEnabled)}
+                    onTrackColor={theme.primary}
+                  />
+                </HStack>
+              </VStack>
+            </VStack>
+          </Modal.Body>
+          <Modal.Footer bg={theme.modalBg} borderColor={theme.border}>
+            <Button.Group space={2}>
+              <Button
+                variant="ghost"
+                onPress={() => setShowGenerator(false)}
+                _text={{ color: theme.text }}
               >
-                {generatedPassword}
-              </Text>
-              <Button p={0} mx={4}>
-                <Image
-                  source={require("./../assets/images/copy.png")}
-                  alt="Copy"
-                  size={4}
-                  tintColor="#ffffff"
-                />
+                Cancel
               </Button>
               <Button
-                p={0}
-                mr={-10}
-                onPress={() => handleGeneratePassword()}
+                bg={theme.primary}
+                _pressed={{ bg: theme.primaryDark }}
+                onPress={handleGeneratePassword}
+                leftIcon={<Icon as={Ionicons} name="refresh-outline" />}
+                _text={{ color: theme.buttonText }}
               >
-                <Image
-                  source={require("./../assets/images/fast-forward.png")}
-                  alt="Fast Forward"
-                  size={4}
-                  tintColor="#ffffff"
-                />
+                Generate
               </Button>
-            </Box>
-          </Box>
-        </Actionsheet.Content>
-      </Actionsheet>
+            </Button.Group>
+          </Modal.Footer>
+        </Modal.Content>
+      </Modal>
     </SafeAreaView>
   );
 };

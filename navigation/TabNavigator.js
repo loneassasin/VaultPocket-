@@ -1,36 +1,19 @@
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
-import { Image } from "native-base";
+import { Icon } from "native-base";
 import { useContext } from "react";
-import { StyleSheet, View } from "react-native";
+import { Ionicons } from '@expo/vector-icons';
 import {
   AddPasswordScreen,
   HomeScreen,
-  KeysScreen,
+  PasswordsScreen,
   ProfileScreen,
 } from "./../screens";
 import { ThemeContext, darkTheme, lightTheme } from "./../utils";
-
-const TabButton = ({ label, iconName, isActive, choosenTheme }) => (
-  <View style={styles.tabButtonContainer}>
-    <Image
-      source={iconName}
-      alt={label}
-      tintColor={choosenTheme.text}
-      style={
-        iconName === require("./../assets/images/add_circle.png")
-          ? styles.tabIconForAddPassword
-          : styles.tabIconSizeForAll
-      }
-    />
-    {isActive && <View style={styles.activeIndicator} />}
-  </View>
-);
 
 const { Navigator, Screen } = createBottomTabNavigator();
 
 export const TabNavigator = () => {
   const { currentTheme } = useContext(ThemeContext);
-
   const theme = currentTheme === "light" ? lightTheme : darkTheme;
 
   return (
@@ -38,15 +21,21 @@ export const TabNavigator = () => {
       initialRouteName="Home"
       screenOptions={{
         headerShown: false,
-        tabBarShowLabel: false,
+        tabBarShowLabel: true,
+        tabBarActiveTintColor: theme.tabBarActive,
+        tabBarInactiveTintColor: theme.tabBarInactive,
         tabBarStyle: {
-          // height: 50,
-          position: "absolute",
-          bottom: 10,
-          marginHorizontal: 20,
-          borderRadius: 10,
-          backgroundColor: theme.background,
-          shadowColor: theme.text,
+          height: 60,
+          paddingBottom: 8,
+          paddingTop: 8,
+          backgroundColor: theme.tabBarBg,
+          borderTopColor: theme.tabBarBorder,
+          borderTopWidth: 1,
+          elevation: 0,
+          shadowOpacity: 0,
+        },
+        tabBarLabelStyle: {
+          fontSize: 12,
         },
       }}
     >
@@ -54,27 +43,17 @@ export const TabNavigator = () => {
         name="Home"
         component={HomeScreen}
         options={{
-          tabBarIcon: ({ focused }) => (
-            <TabButton
-              label="Home"
-              iconName={require("./../assets/images/home.png")}
-              isActive={focused}
-              choosenTheme={theme}
-            />
+          tabBarIcon: ({ color, size }) => (
+            <Icon as={Ionicons} name="home-outline" size={size} color={color} />
           ),
         }}
       />
       <Screen
-        name="Keys"
-        component={KeysScreen}
+        name="Passwords"
+        component={PasswordsScreen}
         options={{
-          tabBarIcon: ({ focused }) => (
-            <TabButton
-              label="Keys"
-              iconName={require("./../assets/images/access_key.png")}
-              isActive={focused}
-              choosenTheme={theme}
-            />
+          tabBarIcon: ({ color, size }) => (
+            <Icon as={Ionicons} name="key-outline" size={size} color={color} />
           ),
         }}
       />
@@ -82,13 +61,8 @@ export const TabNavigator = () => {
         name="Profile"
         component={ProfileScreen}
         options={{
-          tabBarIcon: ({ focused }) => (
-            <TabButton
-              label="Profile"
-              iconName={require("./../assets/images/profile.png")}
-              isActive={focused}
-              choosenTheme={theme}
-            />
+          tabBarIcon: ({ color, size }) => (
+            <Icon as={Ionicons} name="person-outline" size={size} color={color} />
           ),
         }}
       />
@@ -96,38 +70,9 @@ export const TabNavigator = () => {
         name="AddPassword"
         component={AddPasswordScreen}
         options={{
-          tabBarIcon: ({ focused }) => (
-            <TabButton
-              label="Add Password"
-              iconName={require("./../assets/images/add_circle.png")}
-              isActive={focused}
-              choosenTheme={theme}
-            />
-          ),
+          tabBarButton: () => null, // This hides the tab bar button
         }}
       />
     </Navigator>
   );
 };
-
-const styles = StyleSheet.create({
-  tabButtonContainer: {
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  tabIconSizeForAll: {
-    width: 20,
-    height: 20,
-  },
-  tabIconForAddPassword: {
-    width: 35,
-    height: 35,
-  },
-  activeIndicator: {
-    width: 3,
-    height: 3,
-    borderRadius: 5,
-    backgroundColor: "#C96B6B",
-    marginTop: 2,
-  },
-});

@@ -1,6 +1,6 @@
 export * from "./AddPasswordScreen";
 export * from "./HomeScreen";
-export * from "./KeysScreen";
+export * from "./PasswordsScreen";
 export * from "./LoginScreen";
 export * from "./ProfileScreen";
 export * from "./RegisterScreen";

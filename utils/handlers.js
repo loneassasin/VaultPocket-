@@ -55,29 +55,35 @@ export const readRecord = (path) => {
 // };
 
 // Generate Password
-export const generatePassword = (
-  length,
-  includeNumbers,
-  includeUppercase,
-  includeLowercase,
-  includeSymbols
-) => {
+export const generatePassword = (options) => {
+  const {
+    length = 16,
+    numbers = true,
+    uppercase = true,
+    lowercase = true,
+    symbols = true
+  } = options;
+
   let characters = "";
 
-  if (includeNumbers) {
+  if (numbers) {
     characters += "0123456789";
   }
 
-  if (includeUppercase) {
+  if (uppercase) {
     characters += "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
   }
 
-  if (includeLowercase) {
+  if (lowercase) {
     characters += "abcdefghijklmnopqrstuvwxyz";
   }
 
-  if (includeSymbols) {
+  if (symbols) {
     characters += "!@#$%^&*()-_=+[]{}<>:;,./?";
+  }
+
+  if (characters.length === 0) {
+    characters = "abcdefghijklmnopqrstuvwxyz"; // Fallback to lowercase if nothing selected
   }
 
   let password = "";

@@ -1,9 +1,10 @@
 import { useNavigation } from "@react-navigation/native";
 import { StatusBar } from "expo-status-bar";
-import { Box, Button, Flex, Image, Input, Text, useToast } from "native-base";
+import { Box, Button, Icon, Input, Text, useToast, VStack, HStack, Pressable, IconButton, Image, Heading } from "native-base";
 import { useCallback, useContext, useMemo, useState } from "react";
-import { ActivityIndicator } from "react-native";
+import { KeyboardAvoidingView, Platform } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { Ionicons } from '@expo/vector-icons';
 import { ThemeContext, darkTheme, lightTheme } from "./../utils";
 import { signIn } from "./../utils/handlers";
 
@@ -15,135 +16,162 @@ export const LoginScreen = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [load, setLoad] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const theme = currentTheme === "light" ? lightTheme : darkTheme;
-
-  const showToast = useCallback((message) => {
-    toast.show({
-      render: () => (
-        <Box bg={theme.toastBg} px={4} py={2} rounded="md" mb={5}>
-          <Text color={theme.toastText}>{message}</Text>
-        </Box>
-      ),
-    });
-  }, [toast, theme]);
+  const theme = useMemo(() => currentTheme === "light" ? lightTheme : darkTheme, [currentTheme]);
 
   const handleSubmit = async () => {
     if (!email || !password) {
-      showToast("All Fields Must be Filled!");
+      toast.show({
+        title: "Error",
+        description: "Please fill in all fields",
+        status: "error"
+      });
       return;
     }
 
-    setLoad(true);
+    setIsLoading(true);
     try {
       const res = await signIn(email, password);
       if (res.user) {
         setEmail("");
         setPassword("");
+        toast.show({
+          title: "Success",
+          description: "Welcome back!",
+          status: "success"
+        });
       }
     } catch (error) {
-      showToast(error?.message || "Login failed");
+      toast.show({
+        title: "Error",
+        description: error?.message || "Login failed",
+        status: "error"
+      });
     } finally {
-      setLoad(false);
+      setIsLoading(false);
     }
   };
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }}>
-      <StatusBar style="auto" />
-      <Box flex={1} px={4} py={2} justifyContent="center">
-        <Text fontSize={16} color={theme.text} mb={2}>Hey, hello👋</Text>
-        <Text color="#A9A9A9" fontSize={16} mb={4}>
-          Enter your login information
-        </Text>
-        
-        <Input
-          placeholder="Email"
-          mb={4}
-          borderWidth={0}
-          bgColor="#D9D9D9BF"
-          py={4}
-          fontSize={16}
-          value={email}
-          onChangeText={(text) => setEmail(text)}
-          keyboardType="email-address"
-          autoCapitalize="none"
-          autoComplete="off"
-          returnKeyType="next"
-          _focus={{
-            backgroundColor: "#D9D9D9BF",
-            borderWidth: 0
-          }}
-        />
+      <StatusBar style={currentTheme === "light" ? "dark" : "light"} />
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        style={{ flex: 1 }}
+      >
+        <Box flex={1} p={6} justifyContent="center">
+          <VStack space={8} alignItems="center">
+            <Image
+              source={require('../assets/images/user.png')}
+              alt="VaultPocket Logo"
+              size="xl"
+              resizeMode="contain"
+            />
+            
+            <VStack space={2} alignItems="center">
+              <Heading size="xl" color={theme.textColor}>
+                Welcome Back
+              </Heading>
+              <Text fontSize="md" color={theme.textSecondary}>
+                Sign in to access your passwords
+              </Text>
+            </VStack>
 
+            <VStack space={4} w="100%">
+              <Input
+                placeholder="Email"
+                value={email}
+                onChangeText={setEmail}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                size="lg"
+                bg={theme.cardBackground}
+                color={theme.textColor}
+                borderColor={theme.borderColor}
+                _focus={{
+                  borderColor: theme.primary,
+                  bg: theme.cardBackground
+                }}
+                InputLeftElement={
+                  <Icon
+                    as={Ionicons}
+                    name="mail-outline"
+                    size={5}
+                    ml={2}
+                    color={theme.textSecondary}
+                  />
+                }
+              />
 
+              <Input
+                placeholder="Password"
+                value={password}
+                onChangeText={setPassword}
+                type={showPassword ? "text" : "password"}
+                size="lg"
+                bg={theme.cardBackground}
+                color={theme.textColor}
+                borderColor={theme.borderColor}
+                _focus={{
+                  borderColor: theme.primary,
+                  bg: theme.cardBackground
+                }}
+                InputLeftElement={
+                  <Icon
+                    as={Ionicons}
+                    name="lock-closed-outline"
+                    size={5}
+                    ml={2}
+                    color={theme.textSecondary}
+                  />
+                }
+                InputRightElement={
+                  <IconButton
+                    variant="ghost"
+                    onPress={() => setShowPassword(!showPassword)}
+                    icon={
+                      <Icon
+                        as={Ionicons}
+                        name={showPassword ? "eye-off-outline" : "eye-outline"}
+                        size={5}
+                        color={theme.textSecondary}
+                      />
+                    }
+                  />
+                }
+              />
 
+              <Button
+                size="lg"
+                bg={theme.primary}
+                _pressed={{ bg: theme.primaryDark }}
+                isLoading={isLoading}
+                onPress={handleSubmit}
+              >
+                Sign In
+              </Button>
+            </VStack>
 
+            <HStack space={1}>
+              <Text color={theme.textSecondary}>
+                Don't have an account?
+              </Text>
+              <Pressable onPress={() => navigation.navigate("Register")}>
+                <Text color={theme.primary} fontWeight="bold">
+                  Sign Up
+                </Text>
+              </Pressable>
+            </HStack>
 
-
-<Input
-          placeholder="Password"
-          mb={4}
-          borderWidth={0}
-          bgColor="#D9D9D9BF"
-          py={4}
-          fontSize={16}
-          value={password}
-          onChangeText={(text) => setPassword(text)}
-          type={showPassword ? "text" : "password"}
-          autoComplete="off"
-          returnKeyType="done"
-          _focus={{
-            backgroundColor: "#D9D9D9BF",
-            borderWidth: 0
-          }}
-          InputRightElement={
-            <Button
-              size="xs"
-              rounded="none"
-              w="1/6"
-              h="full"
-              onPress={() => setShowPassword(!showPassword)}
-            >
-              {showPassword ? "Hide" : "Show"}
-            </Button>
-          }
-        />
-        <Button
-          w="full"
-          bgColor="#0E660C"
-          py={4}
-          borderRadius={6}
-          onPress={handleSubmit}
-          isDisabled={load}
-          mb={4}
-        >
-          {load ? (
-            <ActivityIndicator color="#ffffff" />
-          ) : (
-            <Text fontWeight="bold" color="#ffffff">
-              Login
-            </Text>
-          )}
-        </Button>
-
-        <Flex flexDirection="row" justifyContent="center">
-          <Text fontSize={16} color={theme.text}>
-            Don't have an account?{" "}
-          </Text>
-          <Button
-            variant="link"
-            p={0}
-            m={0}
-            onPress={() => navigation.navigate("Register")}
-          >
-            <Text fontSize={16} fontWeight="bold" color={theme.text}>
-              Register
-            </Text>
-          </Button>
-        </Flex>
-      </Box>
+            <Pressable onPress={() => navigation.navigate("ForgotPassword")}>
+              <Text color={theme.primary} fontWeight="bold">
+                Forgot Password?
+              </Text>
+            </Pressable>
+          </VStack>
+        </Box>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 };

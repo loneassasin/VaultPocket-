@@ -171,14 +171,21 @@ export const AddPasswordScreen = () => {
         <ScrollView>
           <VStack space={4} p={4}>
             <HStack justifyContent="space-between" alignItems="center" mb={2}>
-              <Text fontSize="2xl" bold color={theme.text}>
-                {route.params?.item ? "Edit Password" : "Add New Password"}
-              </Text>
+              <VStack>
+                <Text color={theme.textSecondary} fontSize="sm" mb={1}>
+                  {route.params?.item ? "Edit Entry" : "New Entry"}
+                </Text>
+                <Text color={theme.text} fontSize="3xl" fontWeight="bold">
+                  Password
+                </Text>
+              </VStack>
               <IconButton
-                icon={<Icon as={Ionicons} name="close" />}
+                icon={<Icon as={Ionicons} name="close" size="lg" />}
                 onPress={() => navigation.goBack()}
                 variant="ghost"
                 _icon={{ color: theme.textSecondary }}
+                _pressed={{ bg: theme.listItemHover }}
+                borderRadius="xl"
               />
             </HStack>
 
@@ -187,16 +194,19 @@ export const AddPasswordScreen = () => {
                 placeholder="Site Name *"
                 value={siteName}
                 onChangeText={setSiteName}
-                size="lg"
+                size="xl"
                 color={theme.text}
                 bg={theme.inputBg}
                 borderColor={theme.inputBorder}
                 _focus={{
                   borderColor: theme.inputFocusBorder,
                   bg: theme.inputFocusBg,
+                  borderWidth: 2,
                 }}
+                borderRadius="xl"
+                py={3}
                 InputLeftElement={
-                  <Icon as={Ionicons} name="globe-outline" size={5} ml={2} color={theme.textSecondary} />
+                  <Icon as={Ionicons} name="globe-outline" size={5} ml={4} color={theme.textSecondary} />
                 }
               />
 
@@ -204,16 +214,19 @@ export const AddPasswordScreen = () => {
                 placeholder="URL (optional)"
                 value={url}
                 onChangeText={setURL}
-                size="lg"
+                size="xl"
                 color={theme.text}
                 bg={theme.inputBg}
                 borderColor={theme.inputBorder}
                 _focus={{
                   borderColor: theme.inputFocusBorder,
                   bg: theme.inputFocusBg,
+                  borderWidth: 2,
                 }}
+                borderRadius="xl"
+                py={3}
                 InputLeftElement={
-                  <Icon as={Ionicons} name="link-outline" size={5} ml={2} color={theme.textSecondary} />
+                  <Icon as={Ionicons} name="link-outline" size={5} ml={4} color={theme.textSecondary} />
                 }
               />
 
@@ -221,16 +234,19 @@ export const AddPasswordScreen = () => {
                 placeholder="Username *"
                 value={username}
                 onChangeText={setUsername}
-                size="lg"
+                size="xl"
                 color={theme.text}
                 bg={theme.inputBg}
                 borderColor={theme.inputBorder}
                 _focus={{
                   borderColor: theme.inputFocusBorder,
                   bg: theme.inputFocusBg,
+                  borderWidth: 2,
                 }}
+                borderRadius="xl"
+                py={3}
                 InputLeftElement={
-                  <Icon as={Ionicons} name="person-outline" size={5} ml={2} color={theme.textSecondary} />
+                  <Icon as={Ionicons} name="person-outline" size={5} ml={4} color={theme.textSecondary} />
                 }
               />
 
@@ -239,47 +255,65 @@ export const AddPasswordScreen = () => {
                 value={password}
                 onChangeText={setPassword}
                 type={showPassword ? "text" : "password"}
-                size="lg"
+                size="xl"
                 color={theme.text}
                 bg={theme.inputBg}
                 borderColor={theme.inputBorder}
                 _focus={{
                   borderColor: theme.inputFocusBorder,
                   bg: theme.inputFocusBg,
+                  borderWidth: 2,
                 }}
+                borderRadius="xl"
+                py={3}
                 InputLeftElement={
-                  <Icon as={Ionicons} name="lock-closed-outline" size={5} ml={2} color={theme.textSecondary} />
+                  <Icon as={Ionicons} name="lock-closed-outline" size={5} ml={4} color={theme.textSecondary} />
                 }
                 InputRightElement={
                   <HStack space={2} mr={2}>
                     <IconButton
-                      icon={<Icon as={Ionicons} name={showPassword ? "eye-off-outline" : "eye-outline"} />}
+                      icon={
+                        <Icon
+                          as={Ionicons}
+                          name={showPassword ? "eye-off-outline" : "eye-outline"}
+                          size="sm"
+                          color={theme.textSecondary}
+                        />
+                      }
                       onPress={() => setShowPassword(!showPassword)}
                       variant="ghost"
-                      _icon={{ color: theme.textSecondary }}
+                      _pressed={{ bg: theme.listItemHover }}
                     />
                     <IconButton
-                      icon={<Icon as={Ionicons} name="refresh-outline" />}
+                      icon={
+                        <Icon
+                          as={Ionicons}
+                          name="refresh-outline"
+                          size="sm"
+                          color={theme.textSecondary}
+                        />
+                      }
                       onPress={() => setShowGenerator(true)}
                       variant="ghost"
-                      _icon={{ color: theme.textSecondary }}
+                      _pressed={{ bg: theme.listItemHover }}
                     />
                   </HStack>
                 }
               />
-            </VStack>
 
-            <Button
-              onPress={handleSave}
-              size="lg"
-              bg={theme.primary}
-              _pressed={{ bg: theme.primaryDark }}
-              _text={{ color: theme.buttonText, fontWeight: "600" }}
-              leftIcon={<Icon as={Ionicons} name="save-outline" color={theme.buttonText} />}
-              mt={4}
-            >
-              {route.params?.item ? "Update Password" : "Save Password"}
-            </Button>
+              <Button
+                onPress={handleSave}
+                bg={theme.primary}
+                _pressed={{ bg: theme.primaryDark }}
+                size="lg"
+                borderRadius="xl"
+                py={4}
+                shadow={3}
+                leftIcon={<Icon as={Ionicons} name="save-outline" size="sm" color="white" />}
+              >
+                {route.params?.item ? "Update Password" : "Save Password"}
+              </Button>
+            </VStack>
           </VStack>
         </ScrollView>
       </KeyboardAvoidingView>

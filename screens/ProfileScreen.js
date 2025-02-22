@@ -119,7 +119,7 @@ export const ProfileScreen = () => {
   const handleLogout = async () => {
     try {
       await signOut(auth);
-      navigation.replace("Login");
+      navigation.replace('Login');
     } catch (error) {
       console.error("Logout error:", error);
       toast.show({
@@ -130,176 +130,166 @@ export const ProfileScreen = () => {
     }
   };
 
-  const menuItems = [
-    {
-      icon: "key-outline",
-      label: "Change Password",
-      onPress: () => navigation.navigate("ChangePassword")
-    },
-    {
-      icon: "shield-outline",
-      label: "Security Settings",
-      onPress: () => navigation.navigate("SecuritySettings")
-    },
-    {
-      icon: "information-circle-outline",
-      label: "About",
-      onPress: () => navigation.navigate("About")
-    }
-  ];
-
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }}>
-      <StatusBar style={currentTheme === "light" ? "dark" : "light"} />
-      <Box flex={1} p={6}>
-        <VStack space={6}>
-          {/* Profile Header */}
-          <HStack space={4} alignItems="center">
-            <Avatar
-              size="xl"
-              bg={theme.primary}
-              source={userData?.photoURL ? { uri: userData.photoURL } : null}
-            >
-              {userData?.name?.charAt(0)?.toUpperCase() || "U"}
-            </Avatar>
-            <VStack flex={1}>
-              {isEditMode ? (
-                <HStack space={2} alignItems="center">
-                  <Input
-                    flex={1}
-                    value={editedName}
-                    onChangeText={setEditedName}
-                    placeholder="Enter your name"
-                    size="lg"
-                    bg={theme.cardBackground}
-                    color={theme.textColor}
-                    borderColor={theme.borderColor}
-                    _focus={{
-                      borderColor: theme.primary,
-                      bg: theme.cardBackground
-                    }}
-                  />
-                  <IconButton
-                    variant="solid"
-                    bg={theme.primary}
-                    icon={<Icon as={Ionicons} name="checkmark" size="sm" color="white" />}
-                    onPress={handleUpdateProfile}
-                    isLoading={isLoading}
-                  />
-                  <IconButton
-                    variant="outline"
-                    borderColor={theme.primary}
-                    icon={<Icon as={Ionicons} name="close" size="sm" color={theme.primary} />}
-                    onPress={() => {
-                      setIsEditMode(false);
-                      setEditedName(userData?.name || "");
-                    }}
-                  />
-                </HStack>
-              ) : (
-                <HStack space={2} alignItems="center">
-                  <Text fontSize="xl" bold color={theme.textColor}>
-                    {userData?.name || "User"}
-                  </Text>
-                  <IconButton
-                    variant="ghost"
-                    icon={<Icon as={Ionicons} name="pencil" size="sm" color={theme.primary} />}
-                    onPress={() => setIsEditMode(true)}
-                  />
-                </HStack>
-              )}
-              <Text fontSize="sm" color={theme.textSecondary}>
-                {userData?.email || ""}
-              </Text>
-              {userData?.createdAt && (
-                <Text fontSize="xs" color={theme.textSecondary}>
-                  Member since {userData.createdAt.toDate().toLocaleDateString()}
-                </Text>
-              )}
-            </VStack>
-          </HStack>
-
-          <Divider bg={theme.borderColor} />
-
-          {/* Settings */}
-          <VStack space={4}>
-            <Text fontSize="lg" bold color={theme.textColor}>
+      <StatusBar style={currentTheme === "dark" ? "light" : "dark"} />
+      <Box flex={1} px={4} pt={4}>
+        <HStack space={2} mb={6} alignItems="center" justifyContent="space-between">
+          <VStack>
+            <Text color={theme.textSecondary} fontSize="sm" mb={1}>
+              Your Profile
+            </Text>
+            <Text color={theme.text} fontSize="3xl" fontWeight="bold">
               Settings
             </Text>
-
-            <HStack space={4} alignItems="center" justifyContent="space-between">
-              <HStack space={3} alignItems="center">
-                <Icon
-                  as={Ionicons}
-                  name={currentTheme === "light" ? "sunny" : "moon"}
-                  size={6}
-                  color={theme.textColor}
-                />
-                <Text fontSize="md" color={theme.textColor}>
-                  Dark Mode
-                </Text>
-              </HStack>
-              <Switch
-                isChecked={currentTheme === "dark"}
-                onToggle={toggleTheme}
-                colorScheme="primary"
-              />
-            </HStack>
-
-            {menuItems.map((item, index) => (
-              <Pressable
-                key={index}
-                onPress={item.onPress}
-              >
-                <HStack space={3} alignItems="center" py={2}>
-                  <Icon
-                    as={Ionicons}
-                    name={item.icon}
-                    size={6}
-                    color={theme.textColor}
-                  />
-                  <Text flex={1} fontSize="md" color={theme.textColor}>
-                    {item.label}
-                  </Text>
-                  <Icon
-                    as={Ionicons}
-                    name="chevron-forward"
-                    size={5}
-                    color={theme.textSecondary}
-                  />
-                </HStack>
-              </Pressable>
-            ))}
           </VStack>
+        </HStack>
 
-          <Button
-            size="lg"
-            variant="outline"
-            borderColor="red.500"
-            _pressed={{ bg: theme.cardBackground }}
-            onPress={() => setIsLogoutDialogOpen(true)}
-            leftIcon={<Icon as={Ionicons} name="log-out-outline" size="sm" color="red.500" />}
+        <VStack space={6}>
+          <Box
+            bg={theme.listItemBg}
+            borderColor={theme.listItemBorder}
+            borderWidth={1}
+            borderRadius="xl"
+            p={6}
+            shadow={1}
           >
-            <Text color="red.500">Sign Out</Text>
-          </Button>
+            <VStack space={4}>
+              <HStack space={4} alignItems="center">
+                <Avatar
+                  bg={theme.primary}
+                  size="lg"
+                >
+                  {userData?.name?.charAt(0)?.toUpperCase() || "U"}
+                </Avatar>
+                <VStack flex={1}>
+                  {isEditMode ? (
+                    <Input
+                      value={editedName}
+                      onChangeText={setEditedName}
+                      fontSize="lg"
+                      fontWeight="bold"
+                      bg={theme.inputBg}
+                      borderColor={theme.inputBorder}
+                      _focus={{
+                        borderColor: theme.inputFocusBorder,
+                        bg: theme.inputFocusBg,
+                        borderWidth: 2,
+                      }}
+                      py={2}
+                      px={3}
+                      borderRadius="lg"
+                    />
+                  ) : (
+                    <Text color={theme.text} fontSize="lg" fontWeight="bold">
+                      {userData?.name || "User"}
+                    </Text>
+                  )}
+                  <Text color={theme.textSecondary} fontSize="sm">
+                    {userData?.email}
+                  </Text>
+                </VStack>
+                <IconButton
+                  icon={
+                    <Icon
+                      as={MaterialIcons}
+                      name={isEditMode ? "check" : "edit"}
+                      size="sm"
+                      color={theme.primary}
+                    />
+                  }
+                  variant="ghost"
+                  _pressed={{ bg: theme.listItemHover }}
+                  onPress={() => {
+                    if (isEditMode) {
+                      handleUpdateProfile();
+                    } else {
+                      setIsEditMode(true);
+                    }
+                  }}
+                />
+              </HStack>
+            </VStack>
+          </Box>
+
+          <Box
+            bg={theme.listItemBg}
+            borderColor={theme.listItemBorder}
+            borderWidth={1}
+            borderRadius="xl"
+            p={6}
+            shadow={1}
+          >
+            <VStack space={4}>
+              <Text color={theme.text} fontSize="lg" fontWeight="bold">
+                Preferences
+              </Text>
+              
+              <HStack alignItems="center" justifyContent="space-between">
+                <HStack space={3} alignItems="center">
+                  <Icon
+                    as={MaterialIcons}
+                    name={currentTheme === "dark" ? "dark-mode" : "light-mode"}
+                    size="md"
+                    color={theme.text}
+                  />
+                  <Text color={theme.text} fontSize="md">
+                    Dark Mode
+                  </Text>
+                </HStack>
+                <Switch
+                  isChecked={currentTheme === "dark"}
+                  onToggle={toggleTheme}
+                  colorScheme="primary"
+                />
+              </HStack>
+            </VStack>
+          </Box>
+
+          <Box
+            bg={theme.listItemBg}
+            borderColor={theme.listItemBorder}
+            borderWidth={1}
+            borderRadius="xl"
+            p={6}
+            shadow={1}
+          >
+            <VStack space={4}>
+              <Text color={theme.text} fontSize="lg" fontWeight="bold">
+                Account
+              </Text>
+              
+              <Button
+                onPress={() => setIsLogoutDialogOpen(true)}
+                variant="ghost"
+                _text={{ color: "red.500" }}
+                leftIcon={<Icon as={MaterialIcons} name="logout" size="sm" color="red.500" />}
+                justifyContent="flex-start"
+                px={0}
+              >
+                Logout
+              </Button>
+            </VStack>
+          </Box>
         </VStack>
 
-        {/* Logout Confirmation Dialog */}
         <AlertDialog
           leastDestructiveRef={cancelRef}
           isOpen={isLogoutDialogOpen}
           onClose={() => setIsLogoutDialogOpen(false)}
         >
-          <AlertDialog.Content bg={theme.cardBackground}>
-            <AlertDialog.Header bg={theme.cardBackground} borderColor={theme.borderColor}>
-              <Text color={theme.textColor} bold>Sign Out</Text>
+          <AlertDialog.Content bg={theme.cardBg}>
+            <AlertDialog.Header bg={theme.cardBg} borderColor={theme.border}>
+              <Text color={theme.text} fontSize="lg" fontWeight="bold">
+                Logout
+              </Text>
             </AlertDialog.Header>
-            <AlertDialog.Body bg={theme.cardBackground}>
-              <Text color={theme.textColor}>
-                Are you sure you want to sign out?
+            <AlertDialog.Body bg={theme.cardBg}>
+              <Text color={theme.text}>
+                Are you sure you want to logout?
               </Text>
             </AlertDialog.Body>
-            <AlertDialog.Footer bg={theme.cardBackground} borderColor={theme.borderColor}>
+            <AlertDialog.Footer bg={theme.cardBg} borderColor={theme.border}>
               <Button.Group space={2}>
                 <Button
                   variant="ghost"
@@ -314,7 +304,7 @@ export const ProfileScreen = () => {
                   _pressed={{ bg: "red.600" }}
                   onPress={handleLogout}
                 >
-                  Sign Out
+                  Logout
                 </Button>
               </Button.Group>
             </AlertDialog.Footer>

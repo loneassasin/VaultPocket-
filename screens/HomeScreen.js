@@ -100,124 +100,243 @@ export const HomeScreen = () => {
     fetchPasswords();
   }, [fetchPasswords]);
 
-  const renderItem = useCallback(({ item }) => (
+  const renderItem = ({ item }) => (
     <Pressable
-      onPress={() => navigation.navigate('AddPassword', { item })}
-      mb={2}
-      bg={theme.cardBackground}
-      rounded="lg"
-      shadow={1}
-      p={4}
+      onPress={() => navigation.navigate("AddPassword", { item })}
+      mb={3}
     >
-      <HStack space={4} alignItems="center" justifyContent="space-between">
-        <VStack flex={1}>
-          <Text color={theme.textColor} bold fontSize="md">
-            {item.siteName}
-          </Text>
-          <Text color={theme.textSecondary} fontSize="sm">
-            {item.username}
-          </Text>
-          {item.url && (
-            <Text color={theme.textSecondary} fontSize="xs" numberOfLines={1}>
-              {item.url}
-            </Text>
-          )}
-        </VStack>
-        <HStack space={2}>
-          <IconButton
-            variant="ghost"
-            colorScheme="primary"
-            icon={<Icon as={Ionicons} name="copy-outline" />}
-            onPress={() => {
-              Clipboard.setString(item.decryptedPassword);
-              toast.show({
-                title: "Password Copied",
-                status: "success",
-                duration: 2000
-              });
-            }}
-          />
-          <Menu
-            trigger={triggerProps => (
-              <IconButton
-                {...triggerProps}
-                variant="ghost"
-                colorScheme="primary"
-                icon={<Icon as={MaterialIcons} name="more-vert" />}
-              />
-            )}
+      <Box
+        bg={theme.listItemBg}
+        borderColor={theme.listItemBorder}
+        borderWidth={1}
+        borderRadius="xl"
+        p={4}
+        shadow={1}
+        _pressed={{ bg: theme.listItemHover }}
+      >
+        <HStack space={4} alignItems="center">
+          <Box
+            bg={theme.primaryBg}
+            p={3}
+            borderRadius="lg"
           >
-            <Menu.Item onPress={() => navigation.navigate('AddPassword', { item })}>
-              Edit
-            </Menu.Item>
-            <Menu.Item onPress={() => handleDelete(item.id)}>
-              Delete
-            </Menu.Item>
-          </Menu>
+            <Icon
+              as={Ionicons}
+              name={item.url ? "globe-outline" : "lock-closed-outline"}
+              size={6}
+              color={theme.primary}
+            />
+          </Box>
+          
+          <VStack space={2} flex={1}>
+            <HStack justifyContent="space-between" alignItems="center">
+              <Text color={theme.text} fontSize="lg" fontWeight="bold" numberOfLines={1} flex={1}>
+                {item.siteName}
+              </Text>
+              <Menu
+                trigger={triggerProps => (
+                  <IconButton
+                    {...triggerProps}
+                    icon={<Icon as={MaterialIcons} name="more-vert" size="sm" color={theme.textSecondary} />}
+                    variant="ghost"
+                    _pressed={{ bg: theme.listItemHover }}
+                  />
+                )}
+                bg={theme.cardBg}
+                borderColor={theme.border}
+                borderWidth={1}
+              >
+                <Menu.Item
+                  onPress={() => {
+                    Clipboard.setString(item.decryptedPassword);
+                    toast.show({
+                      title: "Password Copied",
+                      status: "success",
+                      duration: 2000
+                    });
+                  }}
+                  _text={{ color: theme.text }}
+                  _pressed={{ bg: theme.listItemHover }}
+                >
+                  Copy Password
+                </Menu.Item>
+                <Menu.Item
+                  onPress={() => {
+                    Clipboard.setString(item.username);
+                    toast.show({
+                      title: "Username Copied",
+                      status: "success",
+                      duration: 2000
+                    });
+                  }}
+                  _text={{ color: theme.text }}
+                  _pressed={{ bg: theme.listItemHover }}
+                >
+                  Copy Username
+                </Menu.Item>
+                <Menu.Item
+                  onPress={() => navigation.navigate("AddPassword", { item })}
+                  _text={{ color: theme.text }}
+                  _pressed={{ bg: theme.listItemHover }}
+                >
+                  Edit
+                </Menu.Item>
+              </Menu>
+            </HStack>
+            
+            <Text color={theme.textSecondary} fontSize="sm" numberOfLines={1}>
+              {item.username}
+            </Text>
+            
+            <HStack space={2} alignItems="center">
+              <Text fontSize="xs" color={theme.textMuted}>
+                Last updated: {item.updatedAt.toLocaleString()}
+              </Text>
+            </HStack>
+          </VStack>
         </HStack>
-      </HStack>
+      </Box>
     </Pressable>
-  ), [theme, navigation, toast]);
+  );
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }}>
-      <StatusBar style={currentTheme === "light" ? "dark" : "light"} />
-      <Box flex={1} px={4}>
-        <VStack space={4} mb={4}>
+      <StatusBar style={currentTheme === "dark" ? "light" : "dark"} />
+      <Box flex={1} px={4} pt={4}>
+        <HStack space={2} mb={6} alignItems="center" justifyContent="space-between">
+          <VStack>
+            <Text color={theme.textSecondary} fontSize="sm" mb={1}>
+              Welcome back
+            </Text>
+            <Text color={theme.text} fontSize="3xl" fontWeight="bold">
+              Dashboard
+            </Text>
+          </VStack>
+          <IconButton
+            onPress={() => navigation.navigate("AddPassword")}
+            icon={<Icon as={Ionicons} name="add" size="lg" color="white" />}
+            bg={theme.primary}
+            _pressed={{ bg: theme.primaryDark }}
+            borderRadius="2xl"
+            p={3}
+            shadow={3}
+          />
+        </HStack>
+
+        <HStack space={3} mb={6} alignItems="center">
           <Input
+            flex={1}
             placeholder="Search passwords..."
             value={searchQuery}
             onChangeText={setSearchQuery}
-            bg={theme.cardBackground}
-            color={theme.textColor}
-            borderColor={theme.borderColor}
+            bg={theme.inputBg}
+            borderColor={theme.inputBorder}
+            _focus={{
+              borderColor: theme.inputFocusBorder,
+              bg: theme.inputFocusBg,
+              borderWidth: 2,
+            }}
+            fontSize="md"
+            py={3}
+            px={4}
+            borderRadius="xl"
             InputLeftElement={
               <Icon
                 as={Ionicons}
                 name="search-outline"
                 size={5}
-                ml={2}
+                ml={4}
                 color={theme.textSecondary}
               />
             }
+            InputRightElement={
+              searchQuery ? (
+                <IconButton
+                  icon={<Icon as={Ionicons} name="close-circle" size="sm" />}
+                  onPress={() => setSearchQuery("")}
+                  variant="ghost"
+                  _icon={{ color: theme.textSecondary }}
+                  mr={2}
+                />
+              ) : null
+            }
           />
-          <HStack justifyContent="space-between" alignItems="center">
-            <Menu
-              trigger={triggerProps => (
-                <Pressable {...triggerProps} flexDirection="row" alignItems="center">
-                  <Text color={theme.textColor} mr={1}>Sort by</Text>
-                  <Icon as={MaterialIcons} name="sort" color={theme.textColor} />
-                </Pressable>
-              )}
+          <Menu
+            trigger={triggerProps => (
+              <IconButton
+                {...triggerProps}
+                icon={<Icon as={MaterialIcons} name="sort" size="md" color={theme.textSecondary} />}
+                variant="ghost"
+                _pressed={{ bg: theme.listItemHover }}
+                borderRadius="xl"
+                p={3}
+              />
+            )}
+            bg={theme.cardBg}
+            borderColor={theme.border}
+            borderWidth={1}
+          >
+            <Menu.Item
+              onPress={() => { setSortBy("createdAt"); setSortOrder("desc"); }}
+              _text={{ color: theme.text }}
+              _pressed={{ bg: theme.listItemHover }}
             >
-              <Menu.Item onPress={() => { setSortBy("createdAt"); setSortOrder("desc"); }}>
-                Newest First
-              </Menu.Item>
-              <Menu.Item onPress={() => { setSortBy("createdAt"); setSortOrder("asc"); }}>
-                Oldest First
-              </Menu.Item>
-              <Menu.Item onPress={() => { setSortBy("siteName"); setSortOrder("asc"); }}>
-                Site Name (A-Z)
-              </Menu.Item>
-              <Menu.Item onPress={() => { setSortBy("siteName"); setSortOrder("desc"); }}>
-                Site Name (Z-A)
-              </Menu.Item>
-            </Menu>
-            <Text color={theme.textSecondary}>
-              {filteredPasswords.length} passwords
-            </Text>
-          </HStack>
-        </VStack>
+              Newest First
+            </Menu.Item>
+            <Menu.Item
+              onPress={() => { setSortBy("createdAt"); setSortOrder("asc"); }}
+              _text={{ color: theme.text }}
+              _pressed={{ bg: theme.listItemHover }}
+            >
+              Oldest First
+            </Menu.Item>
+            <Menu.Item
+              onPress={() => { setSortBy("siteName"); setSortOrder("asc"); }}
+              _text={{ color: theme.text }}
+              _pressed={{ bg: theme.listItemHover }}
+            >
+              Site Name (A-Z)
+            </Menu.Item>
+            <Menu.Item
+              onPress={() => { setSortBy("siteName"); setSortOrder("desc"); }}
+              _text={{ color: theme.text }}
+              _pressed={{ bg: theme.listItemHover }}
+            >
+              Site Name (Z-A)
+            </Menu.Item>
+          </Menu>
+        </HStack>
 
         {isLoading ? (
           <Box flex={1} justifyContent="center" alignItems="center">
-            <Spinner size="lg" color={theme.primary} />
+            <ActivityIndicator size="large" color={theme.primary} />
+          </Box>
+        ) : filteredPasswords.length === 0 ? (
+          <Box flex={1} justifyContent="center" alignItems="center">
+            <Icon
+              as={Ionicons}
+              name="lock-closed-outline"
+              size={16}
+              color={theme.textMuted}
+              mb={6}
+            />
+            <Text color={theme.text} fontSize="xl" fontWeight="semibold" textAlign="center" mb={2}>
+              {searchQuery ? "No matches found" : "No passwords yet"}
+            </Text>
+            <Text color={theme.textSecondary} fontSize="md" textAlign="center">
+              {searchQuery
+                ? "Try a different search term"
+                : "Add your first password to get started"}
+            </Text>
           </Box>
         ) : (
           <FlatList
             data={filteredPasswords}
+            keyExtractor={(item) => item.id}
             renderItem={renderItem}
-            keyExtractor={item => item.id}
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={{ paddingBottom: 20 }}
+            ItemSeparatorComponent={() => <Box h={3} />}
             refreshControl={
               <RefreshControl
                 refreshing={refreshing}
@@ -225,34 +344,8 @@ export const HomeScreen = () => {
                 tintColor={theme.primary}
               />
             }
-            ListEmptyComponent={
-              <Box flex={1} justifyContent="center" alignItems="center" py={10}>
-                <Icon
-                  as={Ionicons}
-                  name="lock-closed-outline"
-                  size={12}
-                  color={theme.textSecondary}
-                  mb={4}
-                />
-                <Text color={theme.textColor} fontSize="lg" bold>
-                  No passwords found
-                </Text>
-                <Text color={theme.textSecondary} textAlign="center">
-                  {searchQuery ? "Try a different search term" : "Add your first password"}
-                </Text>
-              </Box>
-            }
           />
         )}
-
-        <Fab
-          renderInPortal={false}
-          shadow={2}
-          size="lg"
-          icon={<Icon color="white" as={Ionicons} name="add" size="lg" />}
-          onPress={() => navigation.navigate('AddPassword')}
-          bg={theme.primary}
-        />
       </Box>
     </SafeAreaView>
   );

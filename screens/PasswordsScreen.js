@@ -167,83 +167,88 @@ export const PasswordsScreen = () => {
     );
   };
 
-  if (isLoading) {
-    return (
-      <Flex flex={1} justify="center" align="center">
-        <ActivityIndicator size="large" color={theme.primary} />
-      </Flex>
-    );
-  }
-
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }}>
       <StatusBar style={currentTheme === "dark" ? "light" : "dark"} />
       <Box flex={1} px={4} pt={4}>
-        <HStack space={2} mb={4} alignItems="center" justifyContent="space-between">
-          <Text color={theme.text} fontSize="2xl" fontWeight="bold">
-            Passwords
-          </Text>
+        <HStack space={2} mb={6} alignItems="center" justifyContent="space-between">
+          <VStack>
+            <Text color={theme.textSecondary} fontSize="sm" mb={1}>
+              Welcome back
+            </Text>
+            <Text color={theme.text} fontSize="3xl" fontWeight="bold">
+              Passwords
+            </Text>
+          </VStack>
           <IconButton
             onPress={() => navigation.navigate("AddPassword")}
-            icon={<Icon as={Ionicons} name="add" size="md" color="white" />}
+            icon={<Icon as={Ionicons} name="add" size="lg" color="white" />}
             bg={theme.primary}
             _pressed={{ bg: theme.primaryDark }}
-            borderRadius="full"
-            p={2}
+            borderRadius="2xl"
+            p={3}
+            shadow={3}
           />
         </HStack>
 
-        <HStack space={2} mb={4} alignItems="center">
-          <Input
-            flex={1}
-            placeholder="Search passwords..."
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-            bg={theme.inputBg}
-            borderColor={theme.inputBorder}
-            _focus={{
-              borderColor: theme.inputFocusBorder,
-              bg: theme.inputFocusBg,
-            }}
-            fontSize="md"
-            py={2}
-            px={4}
-            InputLeftElement={
-              <Icon
-                as={Ionicons}
-                name="search-outline"
-                size={5}
-                ml={2}
-                color={theme.textSecondary}
+        <Input
+          placeholder="Search passwords..."
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+          bg={theme.inputBg}
+          borderColor={theme.inputBorder}
+          _focus={{
+            borderColor: theme.inputFocusBorder,
+            bg: theme.inputFocusBg,
+            borderWidth: 2,
+          }}
+          fontSize="md"
+          py={3}
+          px={4}
+          mb={6}
+          borderRadius="xl"
+          InputLeftElement={
+            <Icon
+              as={Ionicons}
+              name="search-outline"
+              size={5}
+              ml={4}
+              color={theme.textSecondary}
+            />
+          }
+          InputRightElement={
+            searchQuery ? (
+              <IconButton
+                icon={<Icon as={Ionicons} name="close-circle" size="sm" />}
+                onPress={() => setSearchQuery("")}
+                variant="ghost"
+                _icon={{ color: theme.textSecondary }}
+                mr={2}
               />
-            }
-            InputRightElement={
-              searchQuery ? (
-                <IconButton
-                  icon={<Icon as={Ionicons} name="close-circle" />}
-                  onPress={() => setSearchQuery("")}
-                  variant="ghost"
-                  _icon={{ color: theme.textSecondary }}
-                  mr={1}
-                />
-              ) : null
-            }
-          />
-        </HStack>
+            ) : null
+          }
+        />
 
-        {filteredPasswords.length === 0 ? (
+        {isLoading ? (
+          <Flex flex={1} justify="center" align="center">
+            <ActivityIndicator size="large" color={theme.primary} />
+          </Flex>
+        ) : filteredPasswords.length === 0 ? (
           <Flex flex={1} justify="center" align="center">
             <Icon
               as={Ionicons}
               name="lock-closed-outline"
-              size={12}
+              size={16}
               color={theme.textMuted}
-              mb={4}
+              mb={6}
             />
-            <Text color={theme.textMuted} fontSize="lg" textAlign="center">
+            <Text color={theme.text} fontSize="xl" fontWeight="semibold" textAlign="center" mb={2}>
+              {searchQuery ? "No matches found" : "No passwords yet"}
+            </Text>
+            <Text color={theme.textSecondary} fontSize="md" textAlign="center">
               {searchQuery
-                ? "No passwords match your search"
-                : "No passwords saved yet"}
+                ? "Try a different search term"
+                : "Add your first password to get started"}
             </Text>
           </Flex>
         ) : (
@@ -253,6 +258,7 @@ export const PasswordsScreen = () => {
             renderItem={renderItem}
             showsVerticalScrollIndicator={false}
             contentContainerStyle={{ paddingBottom: 20 }}
+            ItemSeparatorComponent={() => <Box h={3} />}
           />
         )}
       </Box>

@@ -41,6 +41,7 @@ export const PasswordsScreen = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [passwords, setPasswords] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
+  const [userData, setUserData] = useState(null);
 
   const currentUser = auth.currentUser;
   const encryptionKey = generateEncryptionKey(currentUser?.uid);
@@ -173,9 +174,6 @@ export const PasswordsScreen = () => {
       <Box flex={1} px={4} pt={4}>
         <HStack space={2} mb={6} alignItems="center" justifyContent="space-between">
           <VStack>
-            <Text color={theme.textSecondary} fontSize="sm" mb={1}>
-              Welcome back
-            </Text>
             <Text color={theme.text} fontSize="3xl" fontWeight="bold">
               Passwords
             </Text>

@@ -165,10 +165,14 @@ export const AddPasswordScreen = () => {
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }}>
       <StatusBar style={currentTheme === "light" ? "dark" : "light"} />
       <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        behavior={Platform.OS === "ios" ? "padding" : "padding"}
         style={{ flex: 1 }}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
       >
-        <ScrollView>
+        <ScrollView
+          keyboardShouldPersistTaps="handled"
+          contentContainerStyle={{ flexGrow: 1 }}
+        >
           <VStack space={4} p={4}>
             <HStack justifyContent="space-between" alignItems="center" mb={2}>
               <VStack>
@@ -194,6 +198,7 @@ export const AddPasswordScreen = () => {
                 placeholder="Site Name *"
                 value={siteName}
                 onChangeText={setSiteName}
+                returnKeyType="next"
                 size="xl"
                 color={theme.text}
                 bg={theme.inputBg}
@@ -214,6 +219,10 @@ export const AddPasswordScreen = () => {
                 placeholder="URL (optional)"
                 value={url}
                 onChangeText={setURL}
+                keyboardType="url"
+                autoCapitalize="none"
+                autoComplete="off"
+                returnKeyType="next"
                 size="xl"
                 color={theme.text}
                 bg={theme.inputBg}
@@ -234,6 +243,9 @@ export const AddPasswordScreen = () => {
                 placeholder="Username *"
                 value={username}
                 onChangeText={setUsername}
+                autoCapitalize="none"
+                autoComplete="username"
+                returnKeyType="next"
                 size="xl"
                 color={theme.text}
                 bg={theme.inputBg}
@@ -255,6 +267,8 @@ export const AddPasswordScreen = () => {
                 value={password}
                 onChangeText={setPassword}
                 type={showPassword ? "text" : "password"}
+                returnKeyType="done"
+                onSubmitEditing={handleSave}
                 size="xl"
                 color={theme.text}
                 bg={theme.inputBg}

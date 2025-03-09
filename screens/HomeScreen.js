@@ -1,6 +1,6 @@
 import { useNavigation } from "@react-navigation/native";
 import { StatusBar } from "expo-status-bar";
-import { collection, query, onSnapshot, orderBy } from "firebase/firestore";
+import { collection, query, onSnapshot, orderBy, doc } from "firebase/firestore";
 import { Box, Fab, Icon, Input, VStack, HStack, Text, useToast, Pressable, Menu, IconButton, Divider, Spinner } from "native-base";
 import { useCallback, useContext, useEffect, useState, useMemo } from "react";
 import { ActivityIndicator, FlatList, RefreshControl, Clipboard } from "react-native";
@@ -21,6 +21,7 @@ export const HomeScreen = () => {
   const [sortBy, setSortBy] = useState("createdAt");
   const [sortOrder, setSortOrder] = useState("desc");
   const [encryptionKey, setEncryptionKey] = useState("");
+  const [userData, setUserData] = useState(null);
   
   const theme = useMemo(() => currentTheme === "light" ? lightTheme : darkTheme, [currentTheme]);
 
@@ -28,6 +29,16 @@ export const HomeScreen = () => {
     if (auth.currentUser) {
       const key = generateEncryptionKey(auth.currentUser.uid);
       setEncryptionKey(key);
+
+      // Fetch user data
+      const userRef = doc(db, 'users', auth.currentUser.uid);
+      const unsubscribe = onSnapshot(userRef, (doc) => {
+        if (doc.exists()) {
+          setUserData(doc.data());
+        }
+      });
+
+      return () => unsubscribe();
     }
   }, []);
 
@@ -205,11 +216,11 @@ export const HomeScreen = () => {
       <Box flex={1} px={4} pt={4}>
         <HStack space={2} mb={6} alignItems="center" justifyContent="space-between">
           <VStack>
-            <Text color={theme.textSecondary} fontSize="sm" mb={1}>
+            <Text color={theme.textSecondary} fontSize="md">
               Welcome back
             </Text>
             <Text color={theme.text} fontSize="3xl" fontWeight="bold">
-              Dashboard
+              {userData?.name ? `${userData.name.charAt(0).toUpperCase() + userData.name.slice(1)}` : 'Dashboard'}
             </Text>
           </VStack>
           <IconButton

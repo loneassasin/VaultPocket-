@@ -119,7 +119,7 @@ export const ProfileScreen = () => {
   const handleLogout = async () => {
     try {
       await signOut(auth);
-      navigation.replace('Login');
+      // Navigation will be handled automatically by the auth state listener in MainNavigation
     } catch (error) {
       console.error("Logout error:", error);
       toast.show({
@@ -136,9 +136,6 @@ export const ProfileScreen = () => {
       <Box flex={1} px={4} pt={4}>
         <HStack space={2} mb={6} alignItems="center" justifyContent="space-between">
           <VStack>
-            <Text color={theme.textSecondary} fontSize="sm" mb={1}>
-              Your Profile
-            </Text>
             <Text color={theme.text} fontSize="3xl" fontWeight="bold">
               Settings
             </Text>

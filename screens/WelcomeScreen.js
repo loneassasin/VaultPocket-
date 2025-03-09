@@ -40,18 +40,10 @@ export const WelcomeScreen = () => {
       <StatusBar style={currentTheme === "light" ? "dark" : "light"} />
       <Box flex={1} px={6} py={4}>
         <VStack flex={1} space={8}>
-          <AnimatedBox entering={FadeInDown.delay(200).duration(1000)}>
-            <Image
-              source={require("../assets/images/user.png")}
-              alt="VaultPocket Logo"
-              size="xl"
-              resizeMode="contain"
-              alignSelf="center"
-            />
-          </AnimatedBox>
+
 
           <AnimatedBox entering={FadeInDown.delay(400).duration(1000)}>
-            <VStack space={2} alignItems="center">
+            <VStack space={2} alignItems="center" mt={20}>
               <HStack space={1} alignItems="center">
                 <Heading size="2xl" color={theme.primary}>
                   Vault

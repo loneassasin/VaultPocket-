@@ -57,8 +57,9 @@ export const LoginScreen = () => {
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }}>
       <StatusBar style={currentTheme === "light" ? "dark" : "light"} />
       <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        behavior={Platform.OS === "ios" ? "padding" : "padding"}
         style={{ flex: 1 }}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
       >
         <Box flex={1} p={6} justifyContent="center">
           <VStack space={8} alignItems="center">
@@ -85,6 +86,8 @@ export const LoginScreen = () => {
                 onChangeText={setEmail}
                 keyboardType="email-address"
                 autoCapitalize="none"
+                autoComplete="email"
+                returnKeyType="next"
                 size="lg"
                 bg={theme.cardBackground}
                 color={theme.textColor}
@@ -109,6 +112,8 @@ export const LoginScreen = () => {
                 value={password}
                 onChangeText={setPassword}
                 type={showPassword ? "text" : "password"}
+                returnKeyType="done"
+                onSubmitEditing={handleSubmit}
                 size="lg"
                 bg={theme.cardBackground}
                 color={theme.textColor}

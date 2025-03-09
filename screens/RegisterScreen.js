@@ -107,7 +107,7 @@ export const RegisterScreen = () => {
           status: "success"
         });
         
-        navigation.replace("Login");
+        // Navigation will be handled by auth state listener
       }
     } catch (error) {
       toast.show({
@@ -124,8 +124,9 @@ export const RegisterScreen = () => {
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }}>
       <StatusBar style={currentTheme === "light" ? "dark" : "light"} />
       <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        behavior={Platform.OS === "ios" ? "padding" : "padding"}
         style={{ flex: 1 }}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
       >
         <Box flex={1} p={6} justifyContent="center">
           <VStack space={8}>
@@ -143,6 +144,8 @@ export const RegisterScreen = () => {
                 placeholder="Full Name"
                 value={name}
                 onChangeText={setName}
+                autoComplete="name"
+                returnKeyType="next"
                 size="lg"
                 bg={theme.cardBackground}
                 color={theme.textColor}
@@ -168,6 +171,8 @@ export const RegisterScreen = () => {
                 onChangeText={setEmail}
                 keyboardType="email-address"
                 autoCapitalize="none"
+                autoComplete="email"
+                returnKeyType="next"
                 size="lg"
                 bg={theme.cardBackground}
                 color={theme.textColor}
@@ -193,6 +198,7 @@ export const RegisterScreen = () => {
                   value={password}
                   onChangeText={setPassword}
                   type={showPassword ? "text" : "password"}
+                  returnKeyType="next"
                   size="lg"
                   bg={theme.cardBackground}
                   color={theme.textColor}
@@ -246,6 +252,8 @@ export const RegisterScreen = () => {
                 value={confirmPassword}
                 onChangeText={setConfirmPassword}
                 type={showConfirmPassword ? "text" : "password"}
+                returnKeyType="done"
+                onSubmitEditing={handleSubmit}
                 size="lg"
                 bg={theme.cardBackground}
                 color={theme.textColor}

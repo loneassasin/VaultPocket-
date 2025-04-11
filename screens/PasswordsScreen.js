@@ -42,6 +42,7 @@ export const PasswordsScreen = () => {
   const [passwords, setPasswords] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [userData, setUserData] = useState(null);
+  const [visiblePasswords, setVisiblePasswords] = useState({});
 
   const currentUser = auth.currentUser;
   const encryptionKey = generateEncryptionKey(currentUser?.uid);
@@ -84,6 +85,13 @@ export const PasswordsScreen = () => {
       });
     }
   }, [currentUser, toast]);
+
+  const togglePasswordVisibility = (id) => {
+    setVisiblePasswords(prev => ({
+      ...prev,
+      [id]: !prev[id]
+    }));
+  };
 
   const filteredPasswords = passwords.filter(item => {
     const searchLower = searchQuery.toLowerCase();
@@ -137,16 +145,34 @@ export const PasswordsScreen = () => {
                 <Text color={theme.text} fontSize="lg" fontWeight="bold" numberOfLines={1} flex={1}>
                   {item.siteName}
                 </Text>
-                <IconButton
-                  icon={<Icon as={Ionicons} name="trash-outline" size="sm" color={theme.error.light} />}
-                  onPress={() => handleDelete(item.id)}
-                  variant="ghost"
-                  _pressed={{ bg: theme.error.light + "20" }}
-                />
+                <HStack space={2}>
+                  <IconButton
+                    icon={<Icon as={Ionicons} name={visiblePasswords[item.id] ? "eye-off-outline" : "eye-outline"} size="sm" color={theme.textSecondary} />}
+                    onPress={(e) => {
+                      e.stopPropagation();
+                      togglePasswordVisibility(item.id);
+                    }}
+                    variant="ghost"
+                    _pressed={{ bg: theme.primaryBg }}
+                  />
+                  <IconButton
+                    icon={<Icon as={Ionicons} name="trash-outline" size="sm" color={theme.error.light} />}
+                    onPress={(e) => {
+                      e.stopPropagation();
+                      handleDelete(item.id);
+                    }}
+                    variant="ghost"
+                    _pressed={{ bg: theme.error.light + "20" }}
+                  />
+                </HStack>
               </HStack>
               
               <Text color={theme.textSecondary} fontSize="sm" numberOfLines={1}>
                 {item.username}
+              </Text>
+
+              <Text color={theme.textSecondary} fontSize="sm" numberOfLines={1}>
+                {visiblePasswords[item.id] ? decryptedPassword : "••••••••"}
               </Text>
               
               <HStack space={2} alignItems="center">

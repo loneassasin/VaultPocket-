@@ -22,7 +22,8 @@ export const HomeScreen = () => {
   const [sortOrder, setSortOrder] = useState("desc");
   const [encryptionKey, setEncryptionKey] = useState("");
   const [userData, setUserData] = useState(null);
-  
+  const [visiblePasswords, setVisiblePasswords] = useState({});
+
   const theme = useMemo(() => currentTheme === "light" ? lightTheme : darkTheme, [currentTheme]);
 
   useEffect(() => {
@@ -111,6 +112,13 @@ export const HomeScreen = () => {
     fetchPasswords();
   }, [fetchPasswords]);
 
+  const togglePasswordVisibility = useCallback((id) => {
+    setVisiblePasswords(prev => ({
+      ...prev,
+      [id]: !prev[id]
+    }));
+  }, []);
+
   const renderItem = ({ item }) => (
     <Pressable
       onPress={() => navigation.navigate("AddPassword", { item })}
@@ -144,66 +152,76 @@ export const HomeScreen = () => {
               <Text color={theme.text} fontSize="lg" fontWeight="bold" numberOfLines={1} flex={1}>
                 {item.siteName}
               </Text>
-              <Menu
-                trigger={triggerProps => (
-                  <IconButton
-                    {...triggerProps}
-                    icon={<Icon as={MaterialIcons} name="more-vert" size="sm" color={theme.textSecondary} />}
-                    variant="ghost"
+              <HStack space={2} alignItems="center">
+                <IconButton
+                  icon={<Icon as={Ionicons} name={visiblePasswords[item.id] ? "eye-off-outline" : "eye-outline"} size="sm" color={theme.textSecondary} />}
+                  onPress={(e) => {
+                    e.stopPropagation();
+                    togglePasswordVisibility(item.id);
+                  }}
+                  variant="ghost"
+                  _pressed={{ bg: theme.primaryBg }}
+                />
+                <Menu
+                  trigger={triggerProps => (
+                    <IconButton
+                      {...triggerProps}
+                      icon={<Icon as={MaterialIcons} name="more-vert" size="sm" color={theme.textSecondary} />}
+                      variant="ghost"
+                      _pressed={{ bg: theme.listItemHover }}
+                    />
+                  )}
+                  bg={theme.cardBg}
+                  borderColor={theme.border}
+                  borderWidth={1}
+                >
+                  <Menu.Item
+                    onPress={() => {
+                      Clipboard.setString(item.decryptedPassword);
+                      toast.show({
+                        title: "Password Copied",
+                        status: "success",
+                        duration: 2000
+                      });
+                    }}
+                    _text={{ color: theme.text }}
                     _pressed={{ bg: theme.listItemHover }}
-                  />
-                )}
-                bg={theme.cardBg}
-                borderColor={theme.border}
-                borderWidth={1}
-              >
-                <Menu.Item
-                  onPress={() => {
-                    Clipboard.setString(item.decryptedPassword);
-                    toast.show({
-                      title: "Password Copied",
-                      status: "success",
-                      duration: 2000
-                    });
-                  }}
-                  _text={{ color: theme.text }}
-                  _pressed={{ bg: theme.listItemHover }}
-                >
-                  Copy Password
-                </Menu.Item>
-                <Menu.Item
-                  onPress={() => {
-                    Clipboard.setString(item.username);
-                    toast.show({
-                      title: "Username Copied",
-                      status: "success",
-                      duration: 2000
-                    });
-                  }}
-                  _text={{ color: theme.text }}
-                  _pressed={{ bg: theme.listItemHover }}
-                >
-                  Copy Username
-                </Menu.Item>
-                <Menu.Item
-                  onPress={() => navigation.navigate("AddPassword", { item })}
-                  _text={{ color: theme.text }}
-                  _pressed={{ bg: theme.listItemHover }}
-                >
-                  Edit
-                </Menu.Item>
-              </Menu>
+                  >
+                    Copy Password
+                  </Menu.Item>
+                  <Menu.Item
+                    onPress={() => {
+                      Clipboard.setString(item.username);
+                      toast.show({
+                        title: "Username Copied",
+                        status: "success",
+                        duration: 2000
+                      });
+                    }}
+                    _text={{ color: theme.text }}
+                    _pressed={{ bg: theme.listItemHover }}
+                  >
+                    Copy Username
+                  </Menu.Item>
+                  <Menu.Item
+                    onPress={() => navigation.navigate("AddPassword", { item })}
+                    _text={{ color: theme.text }}
+                    _pressed={{ bg: theme.listItemHover }}
+                  >
+                    Edit
+                  </Menu.Item>
+                </Menu>
+              </HStack>
             </HStack>
             
             <Text color={theme.textSecondary} fontSize="sm" numberOfLines={1}>
               {item.username}
             </Text>
+
+            <Text color={theme.textSecondary} fontSize="sm" numberOfLines={1}>
+              {visiblePasswords[item.id] ? item.decryptedPassword : "••••••••"}
+            </Text>
             
-            <HStack space={2} alignItems="center">
-              <Text fontSize="xs" color={theme.textMuted}>
-                Last updated: {item.updatedAt.toLocaleString()}
-              </Text>
-            </HStack>
           </VStack>
         </HStack>
       </Box>
